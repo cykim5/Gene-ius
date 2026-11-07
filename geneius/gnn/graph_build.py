@@ -13,8 +13,9 @@ import pandas as pd
 from ..data import get_hpo, get_kg, norm_hpo, read_primekg
 
 
-def training_edges(heldout: set[str]) -> pd.DataFrame:
-    df = read_primekg().reset_index(drop=True)
+def training_edges(heldout: set[str], relations: list[str] | None = None) -> pd.DataFrame:
+    """PrimeKG edges minus the leaks above. Pass relations to load only those edge types."""
+    df = read_primekg(relations).reset_index(drop=True)
     kg, hpo = get_kg(), get_hpo()
 
     is_dp = df.relation.isin(["disease_phenotype_positive", "disease_phenotype_negative"])

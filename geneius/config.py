@@ -32,6 +32,12 @@ def hpoa() -> Path:
     return data_dir() / "phenotype.hpoa"
 
 
+def gnn_dir() -> Path:
+    """Where the trained GNN checkpoint, index maps, and node embeddings live."""
+    raw = os.environ.get("GENEIUS_GNN_DIR") or str(data_dir() / "gnn")
+    return Path(raw).expanduser()
+
+
 _warned = False
 
 
