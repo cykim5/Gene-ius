@@ -51,6 +51,11 @@ def variants_csv() -> Path:
     return Path(raw).expanduser()
 
 
+def gnn_a_dir() -> Path:
+    """Output A checkpoint and predictions.csv. Reading predictions needs no torch import."""
+    return data_dir() / "gnn_a"
+
+
 def alphamissense() -> Path:
     return data_dir() / "AlphaMissense_aa_substitutions.tsv.gz"
 

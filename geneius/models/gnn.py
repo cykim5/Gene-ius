@@ -37,7 +37,7 @@ REV_VARIANT_DISEASE = ("disease", "rev_linked_to", "variant")
 
 
 def default_dir() -> Path:
-    return config.data_dir() / "gnn_a"
+    return config.gnn_a_dir()
 
 
 class _SAGE(nn.Module):
