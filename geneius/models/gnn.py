@@ -51,16 +51,18 @@ class _SAGE(nn.Module):
 
 
 class VariantGNN(nn.Module):
-    def __init__(self, num_nodes: dict[str, int], n_features: int, metadata, hidden: int = 128):
+    """Node types with features (variant, paralog_variant) get a linear input; the rest get embeddings."""
+
+    def __init__(self, num_nodes: dict[str, int], feature_dims: dict[str, int], metadata, hidden: int = 128):
         super().__init__()
-        self.emb = nn.ModuleDict({t: nn.Embedding(num_nodes[t], hidden) for t in ("gene", "disease", "phenotype")})
-        self.variant_in = nn.Linear(n_features, hidden)
+        self.emb = nn.ModuleDict({t: nn.Embedding(n, hidden) for t, n in num_nodes.items() if t not in feature_dims})
+        self.inputs = nn.ModuleDict({t: nn.Linear(d, hidden) for t, d in feature_dims.items()})
         self.encoder = to_hetero(_SAGE(hidden), metadata, aggr="sum")
         self.head = nn.Linear(hidden, 1)
 
     def forward(self, data) -> torch.Tensor:
         x = {t: e.weight for t, e in self.emb.items()}
-        x["variant"] = self.variant_in(data["variant"].x)
+        x.update({t: lin(data[t].x) for t, lin in self.inputs.items()})
         return self.head(self.encoder(x, data.edge_index_dict)["variant"]).squeeze(-1)
 
 
@@ -121,7 +123,8 @@ def train(graph: VariantGraph, genes: list[str], out_dir: Path | None = None, hi
     pos_weight = torch.tensor((len(fit_idx) - n_pos) / max(n_pos, 1.0))
 
     num_nodes = {t: data[t].num_nodes for t in data.node_types}
-    model = VariantGNN(num_nodes, data["variant"].x.size(1), data.metadata(), hidden)
+    feature_dims = {t: data[t].x.size(1) for t in data.node_types if "x" in data[t]}
+    model = VariantGNN(num_nodes, feature_dims, data.metadata(), hidden)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     gen = torch.Generator().manual_seed(seed + 1)
     history, best, best_state, bad = [], -1.0, None, 0
@@ -158,7 +161,7 @@ def train(graph: VariantGraph, genes: list[str], out_dir: Path | None = None, hi
     pd.DataFrame({"variant_id": graph.variant_ids, "gene": genes, "harmful": np.round(p_all, 5)}).to_csv(
         out_dir / "predictions.csv", index=False)
     torch.save({"state_dict": model.state_dict(), "hidden": hidden, "num_nodes": num_nodes,
-                "n_features": data["variant"].x.size(1), "feature_columns": graph.feature_columns},
+                "feature_dims": feature_dims, "feature_columns": graph.feature_columns},
                out_dir / "model.pt")
     metrics = {
         "train_seconds": round(time.perf_counter() - t0, 1),
@@ -229,11 +232,16 @@ def main(argv=None) -> None:
     ap.add_argument("--no-alphamissense", action="store_true", help="drop AlphaMissense from the variant features")
     ap.add_argument("--am-impute", action="store_true",
                     help="no am_missing indicator: missing AlphaMissense is just the train median")
+    ap.add_argument("--paralog", action="store_true", help="add paralog-variant nodes, edges, and count features")
+    ap.add_argument("--structure", action="store_true", help="add 10 A C-alpha edges and 3D count features")
+    ap.add_argument("--holdout-gene", action="append", default=[],
+                    help="remove this gene's variants from training (repeatable); they stay as unlabeled nodes")
     ap.add_argument("--out", type=Path, default=None, help="output folder (default: config.gnn_a_dir())")
     args = ap.parse_args(argv)
     variants = load_variants()
     drop = ("alphamissense",) if args.no_alphamissense else ()
-    graph = build_graph(variants, drop_features=drop, am_indicator=not args.am_impute)
+    graph = build_graph(variants, drop_features=drop, am_indicator=not args.am_impute, paralog=args.paralog,
+                        structure=args.structure, holdout_genes=tuple(args.holdout_gene))
     out = args.out or (no_alphamissense_dir() if args.no_alphamissense else None)
     train(graph, variants["gene"].tolist(), out_dir=out)
 

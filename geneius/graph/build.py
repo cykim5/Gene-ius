@@ -33,10 +33,19 @@ from torch_geometric.data import HeteroData
 from .. import config
 from ..data import get_hpo, norm_hpo
 from ..data.kg import _edges
-from ..features.variant_features import all_variant_features, model_columns, model_matrix
+from ..features.graph_features import (
+    load_ca_coords,
+    paralog_features,
+    paralog_links,
+    residue_positions,
+    structure_features,
+    structure_pairs,
+)
+from ..features.variant_features import CHANGE_COLUMNS, all_variant_features, model_columns, model_matrix, variant_features
 from .leakage import remove_heldout_disease_edges
 
-USED_COLUMNS = ["variant_id", "gene", "ref_aa", "alt_aa", "class_2023", "split", "pheno_ids_2023", "disease_2023"]
+USED_COLUMNS = ["variant_id", "gene", "ref_aa", "alt_aa", "class_2023", "split", "pheno_ids_2023", "disease_2023",
+                "position", "uniprot_pos", "uniprot_ref"]
 LABELS_2023 = {"P": 1.0, "B": 0.0}
 
 KG_RELATIONS = {
@@ -48,8 +57,12 @@ KG_RELATIONS = {
 }
 VARIANT_GENE = ("variant", "in_gene", "gene")
 VARIANT_DISEASE = ("variant", "linked_to", "disease")
+PARALOG_SAME = ("variant", "paralog_same", "paralog_variant")
+PARALOG_NEAR = ("variant", "paralog_near", "paralog_variant")
+PARALOG_GENE = ("paralog_variant", "in_gene", "gene")
+NEAR_3D = ("variant", "near_3d", "variant")
 NODE_TYPES = ("gene", "disease", "phenotype", "variant")
-CACHE_VERSION = "a3"
+CACHE_VERSION = "a4"
 
 _MONDO = re.compile(r"MONDO:MONDO:(\d+)")
 
@@ -106,6 +119,28 @@ def match_diseases(row: pd.Series, by_mondo: dict[int, str], by_name: dict[str, 
     return hits, ("name" if hits else "none")
 
 
+def _extra_links(variants: pd.DataFrame, is_train: np.ndarray, paralog: bool, structure: bool) -> dict:
+    """Paralog and 3D links plus their count features. Label-based counts use only is_train rows."""
+    if not (paralog or structure):
+        return {}
+    from ..data.paralogs import family_maps, load_paralog_variants, load_sequences
+
+    residues = residue_positions(variants, load_sequences())
+    out: dict = {"features": pd.DataFrame(index=range(len(variants)))}
+    if paralog:
+        pv = load_paralog_variants()
+        links = paralog_links(variants, residues, pv, family_maps())
+        out.update(paralog_variants=pv, paralog_links=links)
+        out["features"] = pd.concat([out["features"], paralog_features(len(variants), links)], axis=1)
+    if structure:
+        pairs = structure_pairs(variants, residues, load_ca_coords())
+        label = variants["class_2023"].map(LABELS_2023).to_numpy(dtype=float, na_value=np.nan)
+        train_label = np.where(is_train, label, np.nan)
+        out["structure_pairs"] = pairs
+        out["features"] = pd.concat([out["features"], structure_features(len(variants), pairs, train_label)], axis=1)
+    return out
+
+
 def _cache_key(variants: pd.DataFrame, heldout: set[str], options: dict) -> str:
     h = hashlib.sha1(CACHE_VERSION.encode())
     h.update(pd.util.hash_pandas_object(variants, index=False).values.tobytes())
@@ -120,9 +155,14 @@ def _cache_key(variants: pd.DataFrame, heldout: set[str], options: dict) -> str:
 
 def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str] | frozenset = frozenset(),
                 cache: bool = True, verbose: bool = True, drop_features: tuple[str, ...] = (),
-                feature_table: pd.DataFrame | None = None, am_indicator: bool = True) -> VariantGraph:
+                feature_table: pd.DataFrame | None = None, am_indicator: bool = True, paralog: bool = False,
+                structure: bool = False, holdout_genes: tuple[str, ...] = ()) -> VariantGraph:
     """drop_features removes variant features, e.g. ("alphamissense",) for the run without AlphaMissense.
     am_indicator adds an am_missing feature (see features.variant_features.model_matrix).
+    paralog adds paralog-variant nodes, same/near residue edges, and the paralog count features.
+    structure adds 10 A C-alpha edges between variants and the 3D neighbor-label count features.
+    holdout_genes: these genes' variants get no labels, no disease edges, and add nothing to
+    label-based features, but stay in the graph.
     feature_table overrides feature_table.csv (tests)."""
     if variants is None:
         from ..data import load_variants
@@ -130,7 +170,8 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
         variants = load_variants()
     variants = variants[USED_COLUMNS].reset_index(drop=True)
     heldout = set(heldout_diseases)
-    options = {"drop_features": tuple(sorted(drop_features)), "am_indicator": am_indicator}
+    options = {"drop_features": tuple(sorted(drop_features)), "am_indicator": am_indicator, "paralog": paralog,
+               "structure": structure, "holdout_genes": tuple(sorted(holdout_genes))}
 
     cache_path = config.data_dir() / "cache" / f"variant_graph_{_cache_key(variants, heldout, options)}.pt"
     if cache and cache_path.exists():
@@ -140,7 +181,7 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
         return graph
 
     kg = _kg_edges(heldout)
-    is_train = (variants["split"] == "train").to_numpy()
+    is_train = ((variants["split"] == "train") & ~variants["gene"].isin(holdout_genes)).to_numpy()
     by_mondo, by_name = _disease_lookup(heldout)
     variant_disease, methods = [], []
     for i in np.flatnonzero(is_train):
@@ -153,12 +194,17 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
         keys[s].update(e.src)
         keys[d].update(e.dst)
     keys["gene"].update(variants["gene"])
+    extra = _extra_links(variants, is_train, paralog, structure)
+    if paralog:
+        keys["gene"].update(extra["paralog_variants"]["gene"])
     index = {t: sorted(k) for t, k in keys.items() if t != "variant"}
     index["variant"] = variants["variant_id"].astype(str).tolist()
+    if paralog:
+        index["paralog_variant"] = extra["paralog_variants"]["variant_id"].tolist()
     row = {t: {k: i for i, k in enumerate(ks)} for t, ks in index.items()}
 
     data = HeteroData()
-    for t in NODE_TYPES:
+    for t in index:
         data[t].num_nodes = len(index[t])
 
     def put(etype, pairs):
@@ -173,9 +219,27 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
         put(etype, list(zip(e.src, e.dst)))
     put(VARIANT_GENE, list(zip(index["variant"], variants["gene"])))
     put(VARIANT_DISEASE, variant_disease)
+    if paralog:
+        pv, links = extra["paralog_variants"], extra["paralog_links"]
+        for kind, etype in (("same", PARALOG_SAME), ("near", PARALOG_NEAR)):
+            sub = links[links["kind"] == kind]
+            put(etype, list(zip([index["variant"][i] for i in sub["variant_row"]],
+                                [index["paralog_variant"][j] for j in sub["paralog_row"]])))
+        put(PARALOG_GENE, list(zip(pv["variant_id"], pv["gene"])))
+        px = variant_features(pv.rename(columns={"ref": "ref_aa", "alt": "alt_aa"}))[CHANGE_COLUMNS]
+        px = px.fillna(0.0).to_numpy(dtype=np.float32)
+        data["paralog_variant"].x = torch.from_numpy((px - px.mean(0)) / np.where(px.std(0) > 0, px.std(0), 1.0))
+    if structure:
+        pairs = extra["structure_pairs"]
+        data[NEAR_3D].edge_index = torch.tensor(pairs[["a", "b"]].to_numpy(dtype=np.int64).T.copy())
+        data[NEAR_3D].edge_attr = torch.tensor(pairs["distance"].to_numpy(dtype=np.float32)).unsqueeze(-1)
 
     feats = all_variant_features(variants, feature_table)
-    mat = model_matrix(feats, [c for c in model_columns(feats) if c not in drop_features], is_train, am_indicator)
+    if paralog or structure:
+        feats = pd.concat([feats, extra["features"]], axis=1)
+    base_cols = [c for c in model_columns(feats) if c not in drop_features]
+    base_cols += [c for c in extra.get("features", pd.DataFrame()).columns if c not in base_cols]
+    mat = model_matrix(feats, base_cols, is_train, am_indicator)
     cols = list(mat.columns)
     x = mat.to_numpy(dtype=np.float32)
     mean = x[is_train].mean(axis=0) if is_train.any() else np.zeros(len(cols), dtype=np.float32)
@@ -185,7 +249,7 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
     y = variants["class_2023"].map(LABELS_2023).to_numpy(dtype=np.float32, na_value=np.nan)
     data["variant"].y = torch.from_numpy(np.where(is_train, y, np.nan).astype(np.float32))
     data["variant"].train_mask = torch.from_numpy(is_train & ~np.isnan(y))
-    data = T.ToUndirected()(data)
+    data = T.ToUndirected(reduce="mean")(data)
 
     m = pd.DataFrame(methods, columns=["label", "how"])
     match = {

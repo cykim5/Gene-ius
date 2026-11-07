@@ -18,6 +18,8 @@ from geneius.features.variant_features import (  # noqa: E402
     model_matrix,
     variant_features,
 )
+from geneius.data.paralogs import align_map  # noqa: E402
+from geneius.features.graph_features import paralog_features, paralog_links, residue_positions  # noqa: E402
 from geneius.graph.build import USED_COLUMNS, VARIANT_DISEASE, VARIANT_GENE, build_graph  # noqa: E402
 from geneius.models import gnn  # noqa: E402
 
@@ -42,6 +44,8 @@ def variants() -> pd.DataFrame:
                                      "disease_2023", "class_now"])
     df["stars_2023"] = 2
     df["pheno_ids_2023"] = "MedGen:CN517202"
+    df["uniprot_pos"] = df["position"].astype(float)
+    df["uniprot_ref"] = df["ref_aa"]
     df["stars_now"] = 2
     df["disease_now"] = df["disease_2023"]
     df["pheno_ids_now"] = "MONDO:MONDO:0019200"
@@ -83,6 +87,23 @@ def test_feature_table_fills_placeholders_and_ignores_post_2023_columns(tmp_path
     assert "alphamissense" in g.feature_columns and "in_modified_residue" not in g.feature_columns
     assert "alphamissense" not in build_graph(variants(), cache=False, verbose=False,
                                               drop_features=("alphamissense",)).feature_columns
+
+
+def test_align_map_and_paralog_links():
+    m = align_map("MKTAYIAK", "MKTAYAK")  # paralog lacks the I at panel residue 6
+    assert m[1] == 1 and m[5] == 5 and 6 not in m and m[7] == 6 and m[8] == 7
+    panel = pd.DataFrame({"gene": ["RHO", "RHO", "RHO"], "uniprot_pos": [5.0, 7.0, np.nan],
+                          "uniprot_ref": ["Y", "A", None], "position": [5, 7, 99], "ref_aa": ["Y", "A", "Q"]})
+    residues = residue_positions(panel, {"RHO": "MKTAYIAK"})
+    assert residues.tolist() == [5, 7, 0]
+    para = pd.DataFrame({"variant_id": ["p1", "p2", "p3"], "gene": ["OPN1LW"] * 3, "pos": [5, 6, 4],
+                         "ref": ["Y", "A", "A"], "alt": ["C", "P", "V"], "stars": [1, 2, 1]})
+    links = paralog_links(panel, residues, para, {("RHO", "OPN1LW"): m})
+    got = sorted(map(tuple, links.to_numpy().tolist()))
+    # panel 5 -> paralog 5 (same p1, near p2 at 6 and p3 at 4); panel 7 -> paralog 6 (same p2, near p1 at 5)
+    assert got == [(0, 0, "same"), (0, 1, "near"), (0, 2, "near"), (1, 0, "near"), (1, 1, "same")]
+    f = paralog_features(3, links)
+    assert f["paralog_p_same"].tolist() == [1.0, 1.0, 0.0] and f["paralog_p_near"].tolist() == [2.0, 1.0, 0.0]
 
 
 def test_model_matrix_uses_train_medians_and_optional_am_indicator():

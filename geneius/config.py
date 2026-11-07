@@ -63,6 +63,23 @@ def baseline_predictions_csv() -> Path:
     return Path(raw).expanduser()
 
 
+def _processed(name: str, env: str) -> Path:
+    return Path(os.environ.get(env) or str(REPO_ROOT / "data" / "processed" / name)).expanduser()
+
+
+def paralog_variants_csv() -> Path:
+    return _processed("paralog_pathogenic_2023.csv", "GENEIUS_PARALOG_VARIANTS")
+
+
+def paralog_sequences_json() -> Path:
+    return _processed("paralog_sequences.json", "GENEIUS_PARALOG_SEQUENCES")
+
+
+def ca_coords_pkl() -> Path:
+    """AlphaFold C-alpha coordinates and pLDDT per residue, keyed by gene."""
+    return _processed("alphafold_ca_coords.pkl", "GENEIUS_CA_COORDS")
+
+
 def gnn_a_dir() -> Path:
     """Output A checkpoint and predictions.csv. Reading predictions needs no torch import."""
     raw = os.environ.get("GENEIUS_GNN_A_DIR") or str(data_dir() / "gnn_a")
