@@ -3,7 +3,7 @@
 | Tool                 | Status                          |
 | map_symptoms         | works (dictionary matcher)      |
 | find_entity          | works for genes, diseases, HPO  |
-| expand               | stub                            |
+| expand               | works on PrimeKG (no variants)  |
 | find_paths           | works for symptom -> gene paths |
 | structural_neighbors | stub                            |
 | gnn_predict          | stub                            |

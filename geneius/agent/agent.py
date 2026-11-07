@@ -57,8 +57,15 @@ def _spec(name: str, description: str, props: dict, required: list[str]) -> dict
 TOOL_SPECS = [
     _spec("map_symptoms", "Map free-text symptoms to HPO terms.", {"text": S}, ["text"]),
     _spec("find_entity", "Look up a gene, variant, disease, or symptom.", {"query": S}, ["query"]),
-    _spec("expand", "Neighbors of a node, optionally filtered by node type.",
-          {"node_id": S, "node_type": S}, ["node_id"]),
+    _spec("expand",
+          "Neighbors of a gene, disease, HPO term, pathway, or drug, with each neighbor's degree. "
+          "Generic high-degree phenotypes come last.",
+          {"node_id": S,
+           "node_type": {"type": "string", "enum": ["gene", "disease", "phenotype", "pathway", "drug"]},
+           "relation": {"type": "string", "description": "PrimeKG relation, e.g. disease_protein, "
+                        "disease_phenotype_positive, phenotype_protein, protein_protein, indication"},
+           "limit": {"type": "integer", "description": "max neighbors, default 25"}},
+          ["node_id"]),
     _spec("find_paths", "Knowledge graph paths linking HPO terms to a gene.",
           {"hpo_ids": LIST_S, "gene": S, "max_paths": {"type": "integer"}}, ["hpo_ids", "gene"]),
     _spec("structural_neighbors", "Known variants nearby in 3D and at matching residues in related proteins.",

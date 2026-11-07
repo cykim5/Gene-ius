@@ -4,6 +4,7 @@ from pathlib import Path
 
 from geneius.agent.tools import (
     TOOL_FUNCTIONS,
+    expand,
     find_entity,
     find_paths,
     map_symptoms,
@@ -63,6 +64,27 @@ def test_find_paths():
 def test_find_entity():
     assert find_entity("rho")["matches"][0] == {"node_id": "RHO", "node_type": "gene", "name": "RHO"}
     assert find_entity("Seizure")["matches"][0]["node_id"] == "HP:0001250"
+
+
+def test_expand():
+    # Fixture: Dravet syndrome has 4 phenotypes, gene SCN1A, and drug Stiripentol. Seizure is shared
+    # with Angelman syndrome and SCN1A (degree 3), the top phenotype degree, so it is the generic hub.
+    out = expand("Dravet syndrome")
+    assert out["found"] and out["node_type"] == "disease" and out["total"] == 6
+    names = [n["name"] for n in out["neighbors"]]
+    assert names == ["SCN1A", "Febrile seizure", "Hypotonia", "Global developmental delay", "Stiripentol", "Seizure"]
+    assert set(out["neighbors"][0]) == {"node_id", "node_type", "name", "relation", "degree"}
+    assert out["neighbors"][-1] == {"node_id": "HP:0001250", "node_type": "phenotype", "name": "Seizure",
+                                    "relation": "disease_phenotype_positive", "degree": 3}
+
+    phenos = expand("Dravet syndrome", node_type="phenotype", limit=2)
+    assert phenos["total"] == 4
+    assert [n["node_id"] for n in phenos["neighbors"]] == ["HP:0002373", "HP:0001252"]
+
+    assert [n["name"] for n in expand("Dravet syndrome", relation="indication")["neighbors"]] == ["Stiripentol"]
+    assert {n["name"] for n in expand("rho", node_type="disease")["neighbors"]} == {"retinitis pigmentosa"}
+    assert expand("HP:0001250", node_type="disease")["total"] == 2
+    assert expand("not a node") == {"node_id": "not a node", "found": False, "total": 0, "neighbors": []}
 
 
 def test_treatment_and_assay_rules():
