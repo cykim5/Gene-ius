@@ -86,6 +86,10 @@ def test_expand():
     assert expand("HP:0001250", node_type="disease")["total"] == 2
     assert expand("not a node") == {"node_id": "not a node", "found": False, "total": 0, "neighbors": []}
 
+    empty = expand("rho", node_type="gene", relation="disease_protein")
+    assert empty["neighbors"] == [] and empty["available_node_types"] == {"disease": 1}
+    assert empty["available_relations"] == ["disease_protein"]
+
 
 def test_treatment_and_assay_rules():
     assert suggest_treatment("loss_of_function")["strategy"] == "gene_augmentation"

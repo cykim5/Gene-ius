@@ -28,16 +28,18 @@ How to work:
 4. If it's weak or conflicting, gather more. If it's still unclear, say you're unsure and call suggest_assay.
 5. Answer in plain language. Every claim must cite a path or neighbor a tool returned.
 
-For a question about a gene, its diseases, or symptoms, use find_entity, expand, and find_paths.
+For a question about a gene's diseases and symptoms: expand the gene with node_type="disease", expand
+each disease with node_type="phenotype", then call find_paths with those HPO ids to confirm the links.
 
-Never invent genes, diseases, variants, or links the tools did not return.
+Never invent genes, diseases, symptoms, variants, or links the tools did not return. Name only diseases
+and symptoms that appear in a tool result. Keep the final answer under 300 words.
 A result with "stub": true is a placeholder, not evidence. Don't cite it; say that tool isn't built yet.
 Treatments are hypotheses. Research use only, not a diagnosis."""
 
 DEFAULT_BASE_URL = "https://api.tokenfactory.us-north1.nebius.com/v1/"
 DEFAULT_MODEL = "nvidia/Nemotron-3.5-Super-VL"
 # Reasoning models spend part of the budget thinking before they answer or call a tool.
-MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "2048"))
+MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "4096"))
 
 S = {"type": "string"}
 LIST_S = {"type": "array", "items": S}
@@ -59,9 +61,11 @@ TOOL_SPECS = [
     _spec("find_entity", "Look up a gene, variant, disease, or symptom.", {"query": S}, ["query"]),
     _spec("expand",
           "Neighbors of a gene, disease, HPO term, pathway, or drug, with each neighbor's degree. "
-          "Generic high-degree phenotypes come last.",
+          "Generic high-degree phenotypes come last. Example: expand('RHO', node_type='disease') "
+          "returns RHO's diseases; expand('retinitis pigmentosa', node_type='phenotype') returns its symptoms.",
           {"node_id": S,
-           "node_type": {"type": "string", "enum": ["gene", "disease", "phenotype", "pathway", "drug"]},
+           "node_type": {"type": "string", "enum": ["gene", "disease", "phenotype", "pathway", "drug"],
+                         "description": "type of the NEIGHBORS to return, not of node_id"},
            "relation": {"type": "string", "description": "PrimeKG relation, e.g. disease_protein, "
                         "disease_phenotype_positive, phenotype_protein, protein_protein, indication"},
            "limit": {"type": "integer", "description": "max neighbors, default 25"}},

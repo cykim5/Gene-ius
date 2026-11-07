@@ -200,7 +200,7 @@ def expand(node_id: str, node_type: str | None = None, relation: str | None = No
         neighbors.append(((hub, TYPE_ORDER.get(t, 9), order, name, rel),
                           {"node_id": k, "node_type": t, "name": name, "relation": rel, "degree": deg}))
     neighbors.sort(key=lambda x: x[0])
-    return {
+    out = {
         "node_id": src,
         "node_type": src_type,
         "name": _name(src_type, src),
@@ -208,3 +208,9 @@ def expand(node_id: str, node_type: str | None = None, relation: str | None = No
         "total": len(neighbors),
         "neighbors": [n for _, n in neighbors[:max(0, int(limit))]],
     }
+    if not neighbors and (node_type or relation):
+        # Tell the caller what the filters could have matched, so it can retry instead of giving up.
+        everything = adj.edges.iloc[np.concatenate([adj.rows[m] for m in matches])]
+        out["available_node_types"] = everything.drop_duplicates(["dst_type", "dst"]).dst_type.value_counts().to_dict()
+        out["available_relations"] = sorted(everything.relation.unique().tolist())
+    return out
