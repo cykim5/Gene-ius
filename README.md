@@ -35,26 +35,26 @@ PrimeKG is large. If this folder syncs to OneDrive or Dropbox, set `GENEIUS_DATA
 Everyone builds against these. All return JSON. HPO IDs look like `HP:0001250`, genes are HGNC symbols like `SCN1A`.
 
 | Tool | Returns | Status |
-|---|---|---|
+|---|---|
 | `map_to_hpo(text)` | `[{hpo_id, label, matched_text}]` | Dictionary matcher works. Embedding matcher to do. |
 | `rank_candidates(hpo_ids, top_k=10)` | `[{gene, disease, score}]` | Overlap baseline works. GNN to do. |
 | `get_evidence_paths(hpo_ids, gene, max_paths=5)` | `[{path: [{node_id, node_type, name}], relations}]` | Works |
 | `get_mechanism(disease)` | `{disease, mechanism_summary, key_phenotypes, source}` | Stub. DisMech to do. |
 | `suggest_followup(candidates, known_hpo_ids)` | `{question, hpo_id, distinguishes}` | Works |
 
-## Who works where
+## Repo layout
 
-| Folder | What's in it | Owner |
-|---|---|---|
-| `geneius/agent.py`, `geneius/tools/` | agent loop and the five tools | Sri |
-| `geneius/gnn/` | GNN training and inference | Sri |
-| `geneius/data.py`, `geneius/baseline_overlap.py` | data loaders, overlap baseline | Comp bio |
-| `eval/` | simulated patients, scoring, real case data | Comp bio, PhD 1 |
-| `geneius/tools/mechanism.py`, `followup.py` | mechanism lookup, follow-up logic | PhD 2 |
-| `app/` | demo UI | Sri |
-| `docs/` | pitch, case notes, judge questions | Pitch, PhDs |
-| `notebooks/` | scratch work, prefix files with your name | everyone |
-| `tests/` | runs on a tiny fixture graph, no download needed | everyone |
+| Folder | What's in it |
+|---|---|
+| `geneius/agent.py`, `geneius/tools/` | agent loop and the five tools |
+| `geneius/gnn/` | GNN training and inference |
+| `geneius/data.py`, `geneius/baseline_overlap.py` | data loaders, overlap baseline |
+| `eval/` | simulated patients, scoring, real case data |
+| `geneius/tools/mechanism.py`, `followup.py` | mechanism lookup, follow-up logic |
+| `app/` | demo UI |
+| `docs/` | pitch, case notes, judge questions |
+| `notebooks/` | scratch work, prefix files with your name |
+| `tests/` | runs on a tiny fixture graph, no download needed |
 
 ## Evaluation
 
