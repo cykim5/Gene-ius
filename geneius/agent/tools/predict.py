@@ -71,7 +71,7 @@ def gnn_predict(variant: str) -> dict:
         "variant": f"{row['gene']} p.{row['ref_aa']}{row['position']}{row['alt_aa']}",
         "variant_id": str(row["variant_id"]),
         "gene": row["gene"],
-        "class_2023": row["class_2023"],
+        "clinvar_class_2023": row["class_2023"],
         "model": "GNN output A (harmful vs benign); mechanism, disease, and treatment outputs aren't built yet",
     })
     return out
