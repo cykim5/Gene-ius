@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioHack build checklist</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #F6F8F9;
+  --grid: #E8EDF1;
+  --surface: #FFFFFF;
+  --ink: #18222D;
+  --muted: #5B6B7A;
+  --line: #D5DEE6;
+  --soft: #EEF2F5;
+  --focus: #2B59C3;
+  --empty: #DCE3E9;
+  --data: #1F8A4C;
+  --structure: #2B59C3;
+  --model: #A86E12;
+  --agent: #C2362F;
+  --pitch: #6B4FB8;
+  --all: #3F4F5F;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #0F151C;
+    --grid: #151D26;
+    --surface: #141C25;
+    --ink: #E6EDF3;
+    --muted: #93A4B5;
+    --line: #263241;
+    --soft: #1A2430;
+    --focus: #6E95F0;
+    --empty: #24303D;
+    --data: #4CC47E;
+    --structure: #6E95F0;
+    --model: #E0A84A;
+    --agent: #F0716A;
+    --pitch: #A58CF0;
+    --all: #9AAABB;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+}
+.wrap { max-width: 780px; margin: 0 auto; padding: 32px 20px 64px; }
+header h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 8px; font-weight: 750; }
+header p { margin: 0 0 6px; color: var(--muted); font-size: 15px; max-width: 64ch; }
+header .meet { color: var(--ink); }
+
+.read { display: flex; flex-wrap: wrap; gap: 3px; margin: 22px 0 8px; }
+.seg { width: 14px; height: 30px; border-radius: 3px; background: var(--empty); transition: background-color .25s ease; }
+.seg.on { background: var(--c); }
+.count { font-size: 15px; font-weight: 650; color: var(--ink); margin: 0; font-variant-numeric: tabular-nums; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 22px 0 4px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.field input {
+  font: inherit; font-size: 15px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 240px;
+}
+button { font: inherit; }
+.btn {
+  font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer;
+}
+.btn:hover { background: var(--soft); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.5em; margin: 6px 0 0; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 6px; }
+.filter {
+  display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px;
+  padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.filter .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.filter .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.filter[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.phase { margin-top: 30px; }
+.phase-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 2px;
+}
+.step { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 1.2em; }
+.phase-head h2 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+.when { margin-left: auto; font-size: 13px; color: var(--muted); }
+
+.tasks { list-style: none; margin: 0; padding: 0; }
+.task { padding: 11px 0; border-bottom: 1px solid var(--line); }
+.check { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.box {
+  flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--c);
+  border-radius: 4px; background: var(--surface); position: relative; transition: background-color .15s ease;
+}
+.check input:checked + .box { background: var(--c); }
+.check input:checked + .box::after {
+  content: ""; position: absolute; left: 5px; top: 1px; width: 6px; height: 11px;
+  border: solid var(--surface); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+.check input:focus-visible + .box { outline: 2px solid var(--focus); outline-offset: 2px; }
+.text { font-size: 15.5px; }
+.task.done .text { color: var(--muted); }
+.text code, .detail p code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em;
+  background: var(--soft); padding: 1px 4px; border-radius: 3px;
+}
+.meta {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center;
+  margin: 4px 0 0 32px; font-size: 12.5px; color: var(--muted);
+}
+.role { display: inline-flex; align-items: center; gap: 6px; }
+.role::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.more {
+  background: none; border: none; padding: 0; color: var(--focus); cursor: pointer;
+  font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px;
+}
+.detail { margin: 8px 0 2px 32px; font-size: 14px; color: var(--ink); max-width: 66ch; }
+.detail p { margin: 0 0 8px; }
+.detail ul { margin: 0 0 8px; padding-left: 18px; }
+.detail li { margin-bottom: 3px; }
+.code { position: relative; margin: 0 0 8px; }
+.code pre {
+  margin: 0; padding: 10px 70px 10px 12px; background: var(--soft);
+  border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; font-size: 12.5px;
+}
+.code code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+.code .copy { position: absolute; top: 6px; right: 6px; font-size: 12px; padding: 3px 9px; }
+
+footer {
+  margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 13px; color: var(--muted);
+}
+footer p { margin: 0; flex: 1 1 260px; }
+
+@media (max-width: 520px) {
+  .seg { width: 11px; height: 24px; }
+  header h1 { font-size: 26px; }
+  .field input { min-width: 0; width: 100%; }
+  .field { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BioHack build checklist</h1>
+    <p>Mechanism-aware VUS agent, Nucleate Pittsburgh BioHack 2026. Check tasks off as you finish them. Everyone who opens this checklist sees the same progress.</p>
+    <p class="meet">Office hours with Ben: 4 to 5 pm. Bring the VUS counts, the first baseline numbers, and a short agent demo.</p>
+    <div id="read" class="read" aria-hidden="true"></div>
+    <p id="count" class="count" aria-live="polite"></p>
+  </header>
+
+  <div class="controls">
+    <label class="field">Your name, shown next to tasks you check
+      <input id="name" type="text" maxlength="40" placeholder="e.g. Omar" autocomplete="off">
+    </label>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+  </div>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <div id="filters" class="filters" role="group" aria-label="Show tasks for"></div>
+
+  <div id="phases"></div>
+
+  <footer>
+    <p>Checks are shared: anyone who opens this checklist can see and change them.</p>
+    <button id="reset" class="btn" type="button">Reset all checks</button>
+  </footer>
+</div>
+
+<script>
+const ROLES = {
+  all: { label: "Everyone", color: "var(--all)" },
+  data: { label: "Data", color: "var(--data)" },
+  structure: { label: "Structure", color: "var(--structure)" },
+  model: { label: "Model", color: "var(--model)" },
+  agent: { label: "Agent and demo", color: "var(--agent)" },
+  pitch: { label: "Validation and pitch", color: "var(--pitch)" },
+};
+const ROLE_KEYS = Object.keys(ROLES);
+const keyFor = (r) => "checklist:" + r;
+
+const PHASES = {
+  1: { title: "Set up", when: "Right now" },
+  2: { title: "Data and setup", when: "Until noon" },
+  3: { title: "Noon checkpoint", when: "12:00" },
+  4: { title: "First working version", when: "Noon to 3:30" },
+  5: { title: "Prepare for Ben", when: "3:30" },
+  6: { title: "Office hours with Ben", when: "4:00 to 5:00" },
+};
+
+const TASKS = [
+  // Phase 1
+  { id: "a-slack", phase: 1, role: "all",
+    text: "Post your email, team name, members, and problem statement in the pinned message of #team-formation on Slack",
+    detail: [{ p: "Everyone has to do this. Update the message if anything changes." }] },
+  { id: "a-hackhub", phase: 1, role: "all",
+    text: "Register the team on HackHub and select the NVIDIA problem statement",
+    detail: [{ p: "Teams are 3 to 5 people. Sign in with Google or any email, then choose Register Your Team on the landing page." }] },
+  { id: "a-huddle", phase: 1, role: "all",
+    text: "10-minute huddle: assign roles and agree on data formats",
+    detail: [
+      { p: "Agree on three things so everyone can work in parallel:" },
+      { list: [
+        "Variant table columns: variant ID, gene, UniProt ID, position, original amino acid, new amino acid, 2023 class, current class, review stars, disease",
+        "Prediction file: variant ID with a score for each output",
+        "Agent tools: each tool's name, inputs, and outputs",
+      ] },
+    ] },
+  { id: "p-rubric", phase: 1, role: "pitch",
+    text: "Find the judging criteria on HackHub and share a screenshot with the team" },
+
+  // Phase 2: Data
+  { id: "d-colab", phase: 2, role: "data",
+    text: "Open Colab with a GPU runtime and confirm the GPU works",
+    detail: [
+      { p: "Runtime → Change runtime type → T4 GPU → Save. Then run this and look for a table that names the GPU:" },
+      { code: `!nvidia-smi` },
+    ] },
+  { id: "d-current", phase: 2, role: "data",
+    text: "Download the current ClinVar <code>variant_summary</code> file",
+    detail: [
+      { code: `!wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz
+!ls -lh variant_summary.txt.gz` },
+      { p: "It's about 440 MB." },
+    ] },
+  { id: "d-2023", phase: 2, role: "data",
+    text: "Find and download the early-2023 ClinVar release from the archive",
+    detail: [
+      { p: "List the archive first, then pick the January 2023 <code>variant_summary</code> file:" },
+      { code: `!curl -s https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/archive/ | grep -o 'href="[^"]*"' | head -40` },
+    ] },
+  { id: "d-filter", phase: 2, role: "data",
+    text: "Load both files and keep GRCh38 rows for our panel genes",
+    detail: [
+      { p: "Retina: RHO, ABCA4, GUCY2D, CRX, PRPH2, RPE65, CEP290, BEST1, NR2E3, RPGR, OPA1, PAX6, USH2A." },
+      { p: "Cardiac: SCN5A, KCNQ1, KCNH2, KCNJ2, CACNA1C, MYH7, MYBPC3, LMNA, PKP2. Optional: GLA." },
+      { p: "Check the column headers in each release. ClinVar has renamed some classification columns over time." },
+    ] },
+  { id: "d-missense", phase: 2, role: "data",
+    text: "Keep missense variants and parse the protein change",
+    detail: [{ p: "The Name column holds the protein change. For example, <code>p.Arg1193Gln</code> means original R, position 1193, new Q. Drop synonymous (<code>p.=</code>), nonsense (<code>Ter</code>), and frameshift (<code>fs</code>) changes." }] },
+  { id: "d-merge", phase: 2, role: "data",
+    text: "Merge the two releases and record the 2023 class, current class, and review stars",
+    detail: [{ p: "Merge on VariationID. Combine pathogenic with likely pathogenic, and benign with likely benign. Exclude conflicting interpretations." }] },
+  { id: "d-counts", phase: 2, role: "data",
+    text: "Count reclassified VUS per gene and post the counts to the team",
+    detail: [{ p: "Count variants that were VUS in 2023 and are now pathogenic, likely pathogenic, benign, or likely benign with 2 or more review stars. This is the go/no-go number for the headline test." }] },
+  { id: "d-mech", phase: 2, role: "data",
+    text: "Count mechanism labels per gene",
+    detail: [{ p: "Use LoGoFunc labels and the published RHO mechanism classes. If retina has few labels, the mechanism demo moves to the cardiac channels." }] },
+
+  // Phase 2: Structure
+  { id: "s-uniprot", phase: 2, role: "structure",
+    text: "Look up the reviewed human UniProt ID for each panel gene" },
+  { id: "s-features", phase: 2, role: "structure",
+    text: "Download each protein's sequence and features from UniProt",
+    detail: [
+      { code: `https://rest.uniprot.org/uniprotkb/<UniProt_ID>.json` },
+      { p: "Keep domains, transmembrane segments, topological domains, active and binding sites, disulfide bonds, and modified residues." },
+    ] },
+  { id: "s-alphafold", phase: 2, role: "structure",
+    text: "Download the AlphaFold structure for each protein",
+    detail: [{ p: "Search the UniProt ID on alphafold.ebi.ac.uk and download the PDB file. USH2A, RYR2, and TTN are split into fragments, so skip their 3D edges." }] },
+  { id: "s-esm", phase: 2, role: "structure",
+    text: "Set up ESM-2 with sliding windows for long proteins",
+    detail: [{ p: "ESM-2 handles about 1,000 amino acids at a time. SCN5A, ABCA4, and CEP290 are longer, so use a window centered on each variant." }] },
+  { id: "s-residue", phase: 2, role: "structure",
+    text: "Run the residue check once the variant table exists",
+    detail: [{ p: "Confirm the original amino acid matches UniProt's sequence at that position. Drop mismatches and record how many." }] },
+
+  // Phase 2: Model
+  { id: "m-pyg", phase: 2, role: "model",
+    text: "Install PyTorch Geometric and confirm PyTorch sees the GPU",
+    detail: [{ code: `!pip install torch_geometric
+import torch
+print(torch.cuda.is_available())` }] },
+  { id: "m-primekg", phase: 2, role: "model",
+    text: "Download PrimeKG and check its node types",
+    detail: [{ p: "Search Harvard Dataverse for PrimeKG and download <code>kg.csv</code>. Confirm it has gene/protein, disease, and effect/phenotype nodes." }] },
+  { id: "m-xgb", phase: 2, role: "model",
+    text: "Confirm XGBoost runs on the GPU",
+    detail: [{ code: `import xgboost as xgb
+model = xgb.XGBClassifier(device="cuda", tree_method="hist")` }] },
+
+  // Phase 2: Agent and demo
+  { id: "g-nebius", phase: 2, role: "agent",
+    text: "Redeem Nebius credits and make one LLM call",
+    detail: [{ p: "Scan the QR code on the opening slides ($100 per person). Keep the API key in an environment variable, never in code or on GitHub." }] },
+  { id: "g-stubs", phase: 2, role: "agent",
+    text: "Write stub tools that return dummy outputs",
+    detail: [{ p: "Start with <code>find_entity</code>, <code>expand</code>, and <code>gnn_predict</code>, using the tool format agreed in the huddle." }] },
+  { id: "g-viewer", phase: 2, role: "agent",
+    text: "Show the RHO AlphaFold structure in a notebook with py3Dmol",
+    detail: [{ code: `!pip install py3Dmol` }] },
+  { id: "g-argosx", phase: 2, role: "agent",
+    text: "Sign up for ArgosX and ask which hosting URLs they accept",
+    detail: [
+      { p: "Team code:" },
+      { code: `NUCLEATE-BH26` },
+      { p: "Ask in #argosx-questions whether Streamlit Cloud or Hugging Face Spaces URLs work, or only Vercel and Amplify." },
+    ] },
+
+  // Phase 2: Pitch
+  { id: "p-templates", phase: 2, role: "pitch",
+    text: "Write 10 benchmark question templates for the agent",
+    detail: [{ list: [
+      "Which disease does variant X cause, and why?",
+      "Which genes share symptom Y and have mouse evidence?",
+      "Why does variant V1 cause disease A while V2 causes disease B?",
+    ] }] },
+  { id: "p-slides", phase: 2, role: "pitch",
+    text: "Make a slide skeleton with placeholder numbers",
+    detail: [{ p: "Five sections: the problem, what we built, the demo, results, and who uses it." }] },
+
+  // Phase 3
+  { id: "c-gonogo", phase: 3, role: "all",
+    text: "Go/no-go on the VUS counts",
+    detail: [{ p: "If there are enough, continue. If too few, widen to whole gene families (RetNet retinal genes, all sodium and potassium channels) or move the cutoff earlier, and pick the backup headline." }] },
+  { id: "c-mechdemo", phase: 3, role: "all",
+    text: "Decide where the mechanism demo lives: retina or cardiac" },
+
+  // Phase 4
+  { id: "d-labels", phase: 4, role: "data",
+    text: "Build the labels table and apply the leakage rules",
+    detail: [{ p: "Remove VUS-to-disease edges and train only on 2023 releases. See Stage 0 in the project plan." }] },
+  { id: "s-featuretable", phase: 4, role: "structure",
+    text: "Build the feature table",
+    detail: [{ p: "AlphaMissense score, pLDDT, buried vs surface, UniProt region flags, distance to functional sites, and relative position." }] },
+  { id: "m-graph", phase: 4, role: "model",
+    text: "Build the graph as PyG HeteroData",
+    detail: [{ p: "PrimeKG plus variant nodes and variant-to-gene edges. Add reverse edges with <code>ToUndirected</code>." }] },
+  { id: "m-baselines", phase: 4, role: "model",
+    text: "Run the AlphaMissense and XGBoost baselines and post the first numbers" },
+  { id: "g-agentq", phase: 4, role: "agent",
+    text: "Get the agent to answer one question through the graph" },
+  { id: "g-app", phase: 4, role: "agent",
+    text: "Build a basic app with the 3D viewer showing one protein" },
+  { id: "p-curve", phase: 4, role: "pitch",
+    text: "Write the time-saved curve code so it's ready when predictions exist" },
+  { id: "p-draft", phase: 4, role: "pitch",
+    text: "Draft the slides" },
+
+  // Phase 5
+  { id: "r-collect", phase: 5, role: "all",
+    text: "Collect what to show Ben: the counts, first baseline numbers, and a short agent demo" },
+  { id: "r-questions", phase: 5, role: "pitch",
+    text: "Pick the top questions for Ben",
+    detail: [{ list: [
+      "Should the agent part be bigger, or should we focus on the variant predictions?",
+      "What validation would convince you?",
+      "Is PrimeKG plus ClinVar a good base?",
+      "Which NVIDIA tools would you like to see used?",
+    ] }] },
+
+  // Phase 6
+  { id: "b-meet", phase: 6, role: "all",
+    text: "Meet Ben: show results, ask the questions, and write down his exact words" },
+  { id: "b-update", phase: 6, role: "all",
+    text: "Update priorities based on his feedback" },
+];
+
+// ---------- state ----------
+const checks = {};
+ROLE_KEYS.forEach((r) => { checks[r] = {}; });
+let myName = "";
+let filter = "every";
+const hasStorage = typeof window !== "undefined" && window.storage && typeof window.storage.get === "function";
+
+const statusEl = document.getElementById("status");
+const countEl = document.getElementById("count");
+const readEl = document.getElementById("read");
+const nameInput = document.getElementById("name");
+const filtersEl = document.getElementById("filters");
+const phasesEl = document.getElementById("phases");
+const refs = {};
+
+function setStatus(msg) { statusEl.textContent = msg; }
+function timeStr(ms) {
+  try { return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+  catch (e) { return ""; }
+}
+
+// ---------- build ----------
+const segs = TASKS.map((t) => {
+  const s = document.createElement("span");
+  s.className = "seg";
+  s.style.setProperty("--c", ROLES[t.role].color);
+  readEl.appendChild(s);
+  return s;
+});
+
+const filterDefs = [{ key: "every", label: "All tasks", color: "var(--all)" }]
+  .concat(ROLE_KEYS.filter((r) => r !== "all").map((r) => ({ key: r, label: ROLES[r].label, color: ROLES[r].color })));
+const filterBtns = filterDefs.map((f) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "filter";
+  b.dataset.role = f.key;
+  b.style.setProperty("--c", f.color);
+  b.setAttribute("aria-pressed", f.key === filter ? "true" : "false");
+  const dot = document.createElement("span"); dot.className = "dot"; dot.setAttribute("aria-hidden", "true");
+  const label = document.createElement("span"); label.textContent = f.label;
+  const n = document.createElement("span"); n.className = "n";
+  b.append(dot, label, n);
+  b.addEventListener("click", () => {
+    filter = f.key;
+    filterBtns.forEach((x) => x.setAttribute("aria-pressed", x.dataset.role === filter ? "true" : "false"));
+    applyFilter();
+  });
+  filtersEl.appendChild(b);
+  return b;
+});
+
+async function copyText(txt, btn) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) { ok = false; }
+  if (!ok) {
+    const ta = document.createElement("textarea");
+    ta.value = txt;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute"; ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+  }
+  btn.textContent = ok ? "Copied" : "Select and copy";
+  setTimeout(() => { btn.textContent = "Copy"; }, 1600);
+}
+
+function buildDetail(t) {
+  const det = document.createElement("div");
+  det.className = "detail";
+  det.id = "det-" + t.id;
+  det.hidden = true;
+  t.detail.forEach((part) => {
+    if (part.p) {
+      const p = document.createElement("p");
+      p.innerHTML = part.p;
+      det.appendChild(p);
+    } else if (part.list) {
+      const ul = document.createElement("ul");
+      part.list.forEach((item) => { const li = document.createElement("li"); li.textContent = item; ul.appendChild(li); });
+      det.appendChild(ul);
+    } else if (part.code) {
+      const wrap = document.createElement("div"); wrap.className = "code";
+      const pre = document.createElement("pre"); const code = document.createElement("code");
+      code.textContent = part.code;
+      pre.appendChild(code);
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn copy"; btn.textContent = "Copy";
+      btn.addEventListener("click", () => copyText(part.code, btn));
+      wrap.append(pre, btn);
+      det.appendChild(wrap);
+    }
+  });
+  return det;
+}
+
+function buildTask(t) {
+  const li = document.createElement("li");
+  li.className = "task";
+  li.style.setProperty("--c", ROLES[t.role].color);
+
+  const label = document.createElement("label");
+  label.className = "check";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.id = "cb-" + t.id;
+  const box = document.createElement("span"); box.className = "box"; box.setAttribute("aria-hidden", "true");
+  const text = document.createElement("span"); text.className = "text"; text.innerHTML = t.text;
+  label.append(input, box, text);
+
+  const meta = document.createElement("div"); meta.className = "meta";
+  const role = document.createElement("span"); role.className = "role"; role.textContent = ROLES[t.role].label;
+  const by = document.createElement("span"); by.className = "by";
+  meta.append(role, by);
+  li.append(label, meta);
+
+  if (t.detail) {
+    const det = buildDetail(t);
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "more"; btn.textContent = "Details";
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-controls", det.id);
+    btn.addEventListener("click", () => {
+      const open = det.hidden;
+      det.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      btn.textContent = open ? "Hide details" : "Details";
+    });
+    meta.appendChild(btn);
+    li.appendChild(det);
+  }
+
+  input.addEventListener("change", () => toggle(t, input.checked));
+  refs[t.id] = { li, input, by };
+  return li;
+}
+
+Object.keys(PHASES).forEach((num) => {
+  const ph = PHASES[num];
+  const sec = document.createElement("section");
+  sec.className = "phase";
+  const head = document.createElement("div"); head.className = "phase-head";
+  const step = document.createElement("span"); step.className = "step"; step.textContent = num;
+  const h2 = document.createElement("h2"); h2.textContent = ph.title;
+  const when = document.createElement("span"); when.className = "when"; when.textContent = ph.when;
+  head.append(step, h2, when);
+  const ul = document.createElement("ul"); ul.className = "tasks";
+  TASKS.filter((t) => String(t.phase) === num).forEach((t) => ul.appendChild(buildTask(t)));
+  sec.append(head, ul);
+  phasesEl.appendChild(sec);
+});
+
+// ---------- render ----------
+function applyFilter() {
+  TASKS.forEach((t) => {
+    const show = filter === "every" || t.role === filter || t.role === "all";
+    refs[t.id].li.hidden = !show;
+  });
+  document.querySelectorAll(".phase").forEach((sec) => {
+    const any = Array.from(sec.querySelectorAll(".task")).some((li) => !li.hidden);
+    sec.hidden = !any;
+  });
+}
+
+function updateAll() {
+  let done = 0;
+  TASKS.forEach((t, i) => {
+    const e = checks[t.role][t.id];
+    const ref = refs[t.id];
+    ref.input.checked = !!e;
+    ref.li.classList.toggle("done", !!e);
+    ref.by.textContent = e ? ("Done by " + e.by + (e.at ? " at " + timeStr(e.at) : "")) : "";
+    segs[i].classList.toggle("on", !!e);
+    if (e) done++;
+  });
+  countEl.textContent = done + " of " + TASKS.length + " tasks done";
+  filterBtns.forEach((b) => {
+    const r = b.dataset.role;
+    const list = r === "every" ? TASKS : TASKS.filter((t) => t.role === r);
+    const d = list.filter((t) => checks[t.role][t.id]).length;
+    b.querySelector(".n").textContent = d + "/" + list.length;
+  });
+  applyFilter();
+}
+
+// ---------- storage ----------
+async function loadRole(r) {
+  try {
+    const res = await window.storage.get(keyFor(r), true);
+    return res && res.value ? JSON.parse(res.value) : {};
+  } catch (e) {
+    return null;
+  }
+}
+
+async function loadAll(showStatus) {
+  if (!hasStorage) {
+    setStatus("Shared saving isn't available here, so checks only last until you close this page.");
+    return;
+  }
+  if (showStatus) setStatus("Loading team progress…");
+  const results = await Promise.all(ROLE_KEYS.map(loadRole));
+  results.forEach((v, i) => { if (v) checks[ROLE_KEYS[i]] = v; });
+  updateAll();
+  setStatus("Up to date as of " + timeStr(Date.now()));
+}
+
+async function toggle(task, done) {
+  const r = task.role;
+  const entry = { by: myName.trim() || "a teammate", at: Date.now() };
+  if (done) checks[r][task.id] = entry; else delete checks[r][task.id];
+  updateAll();
+  if (!hasStorage) return;
+  setStatus("Saving…");
+  try {
+    const fetched = await loadRole(r);
+    const latest = fetched || Object.assign({}, checks[r]);
+    if (done) latest[task.id] = entry; else delete latest[task.id];
+    const res = await window.storage.set(keyFor(r), JSON.stringify(latest), true);
+    if (!res) throw new Error("No result");
+    checks[r] = latest;
+    updateAll();
+    setStatus(done ? "Checked and shared with the team" : "Unchecked and shared with the team");
+  } catch (e) {
+    setStatus("Couldn't save to shared storage. Press Refresh, then check the task again.");
+  }
+}
+
+async function loadName() {
+  if (!hasStorage) return;
+  try {
+    const res = await window.storage.get("profile:name", false);
+    if (res && res.value) { myName = res.value; nameInput.value = myName; }
+  } catch (e) { /* no saved name yet */ }
+}
+
+nameInput.addEventListener("change", async () => {
+  myName = nameInput.value.trim();
+  if (!hasStorage) return;
+  try { await window.storage.set("profile:name", myName, false); } catch (e) { /* name stays for this session */ }
+});
+
+document.getElementById("refresh").addEventListener("click", () => loadAll(true));
+
+const resetBtn = document.getElementById("reset");
+let resetArmed = false;
+let resetTimer = null;
+resetBtn.addEventListener("click", async () => {
+  if (!resetArmed) {
+    resetArmed = true;
+    resetBtn.textContent = "Click again to clear every check";
+    resetTimer = setTimeout(() => { resetArmed = false; resetBtn.textContent = "Reset all checks"; }, 4000);
+    return;
+  }
+  clearTimeout(resetTimer);
+  resetArmed = false;
+  resetBtn.textContent = "Reset all checks";
+  ROLE_KEYS.forEach((r) => { checks[r] = {}; });
+  updateAll();
+  if (!hasStorage) return;
+  try {
+    await Promise.all(ROLE_KEYS.map((r) => window.storage.set(keyFor(r), "{}", true)));
+    setStatus("All checks cleared for the team");
+  } catch (e) {
+    setStatus("Couldn't clear shared storage. Press Refresh and try again.");
+  }
+});
+
+setInterval(() => { if (document.visibilityState === "visible") loadAll(false); }, 45000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadAll(false); });
+
+updateAll();
+loadName();
+loadAll(true);
+</script>
+</body>
+</html>
