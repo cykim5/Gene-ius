@@ -1,6 +1,6 @@
 # Demo app
 
-The demo UI goes here (owner: Sri). It should call `geneius.pipeline.run_pipeline` or `geneius.agent.run_agent` and show:
+The demo UI goes here. It should call `geneius.pipeline.run_pipeline` or `geneius.agent.run_agent` and show:
 
 - the HPO terms found
 - ranked genes with their evidence paths

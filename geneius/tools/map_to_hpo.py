@@ -3,7 +3,7 @@
 Current version: offline dictionary matcher over HPO names + exact/layperson synonyms
 (longest phrase wins, simple plural handling). Fast and needs no API key.
 
-TODO (Sri): add the embedding matcher (Qwen3-Embedding-8B) for phrasings that aren't
+TODO: add the embedding matcher (Qwen3-Embedding-8B) for phrasings that aren't
 in HPO verbatim, e.g. "can't walk straight" -> Ataxia. Keep this matcher as the fallback.
 Known gap: negation is ignored ("no seizures" still maps to Seizure).
 """

@@ -4,7 +4,7 @@ Picks an HPO term the patient hasn't reported that some (not all) candidate dise
 have. Prefers informative terms that split the field evenly, with a bonus for terms
 that separate candidate #1 from candidate #2.
 
-TODO (PhD #2): refine what makes a clinically good question (e.g. easy to check at
+TODO: refine what makes a clinically good question (e.g. easy to check at
 the bedside, use phenotype frequency from phenotype.hpoa).
 """
 from __future__ import annotations

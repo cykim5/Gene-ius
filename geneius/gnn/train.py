@@ -1,4 +1,4 @@
-"""Train the GNN ranker. Not written yet (owner: Sri).
+"""Train the GNN ranker. Not written yet.
 
 Plan:
   1. edges = graph_build.training_edges(heldout) using eval/data/heldout_diseases.txt
