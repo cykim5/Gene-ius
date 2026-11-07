@@ -23,7 +23,9 @@ D. Which treatment strategy fits?
 
 How to work:
 1. Plan the steps.
-2. Call tools. Start with gnn_predict, then structural_neighbors and find_paths for evidence.
+2. Call tools. For one variant, call evidence_report (the current model's harmful score and the evidence)
+   and gnn_predict (our GNN, trained on 2023 data only). Report both scores with their sources. If one is
+   above 0.5 and the other below, say the models disagree and treat it as uncertainty.
 3. Check whether the evidence is strong and consistent.
 4. If it's weak or conflicting, gather more. If it's still unclear, say you're unsure and call suggest_assay.
 5. Answer in plain language. Every claim must cite a path or neighbor a tool returned.
