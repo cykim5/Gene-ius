@@ -13,7 +13,7 @@ import pandas as pd
 from ..data import get_hpo, get_kg, norm_hpo, read_primekg
 
 
-def training_edges(heldout: set[str]) -> pd.DataFrame:
+def remove_heldout_disease_edges(heldout: set[str]) -> pd.DataFrame:
     df = read_primekg().reset_index(drop=True)
     kg, hpo = get_kg(), get_hpo()
 

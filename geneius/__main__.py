@@ -1,8 +1,8 @@
 """Command line entry point.
 
-    python -m geneius "4 year old with seizures, low muscle tone and speech delay"
-    python -m geneius --agent "..."     # use the LLM agent
-    python -m geneius --json "..."      # raw JSON output
+    python -m geneius variant RHO p.Pro23His       # predictions + assay (stub until the GNN exists)
+    python -m geneius ask "What does RHO P23H do?" # LLM agent
+    python -m geneius symptoms "night blindness and retinitis pigmentosa"
 """
 from __future__ import annotations
 
@@ -10,46 +10,43 @@ import argparse
 import json
 
 
-def _print_pipeline(result: dict) -> None:
-    print("HPO terms:")
-    for t in result["hpo_terms"]:
-        print(f"  {t['hpo_id']}  {t['label']}  (from \"{t['matched_text']}\")")
-    if not result["candidates"]:
-        print("\nNo candidates. Try describing the symptoms differently.")
-        return
-    print("\nCandidates:")
-    for i, c in enumerate(result["candidates"], 1):
-        print(f"  {i:>2}. {c['gene']:<10} {c['score']:.3f}  {c['disease']}")
-        for p in c.get("evidence", [])[:3]:
-            print("        " + " > ".join(n["name"] for n in p["path"]))
-    f = result.get("followup")
-    if f and f.get("question"):
-        print(f"\nFollow-up: {f['question']}")
-        print(f"  Would support: {', '.join(f['distinguishes'])}")
-
-
 def main(argv=None) -> None:
-    ap = argparse.ArgumentParser(prog="geneius", description="Rare disease diagnosis copilot")
-    ap.add_argument("text", help="symptoms in plain English")
-    ap.add_argument("--agent", action="store_true", help="use the LLM agent instead of the fixed pipeline")
-    ap.add_argument("--top-k", type=int, default=10)
-    ap.add_argument("--json", action="store_true", help="print raw JSON")
+    ap = argparse.ArgumentParser(prog="geneius", description="Mechanism-aware VUS interpretation agent")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    v = sub.add_parser("variant", help="predict A to D for one variant")
+    v.add_argument("gene")
+    v.add_argument("change", help="protein change, e.g. p.Pro23His")
+
+    a = sub.add_parser("ask", help="ask the LLM agent a question")
+    a.add_argument("question")
+
+    s = sub.add_parser("symptoms", help="map free text to HPO terms")
+    s.add_argument("text")
+
     args = ap.parse_args(argv)
 
-    if args.agent:
-        from .agent import run_agent
+    if args.cmd == "variant":
+        from .agent.tools import gnn_predict, suggest_assay, suggest_treatment
 
-        result = run_agent(args.text, verbose=not args.json)
-        print(json.dumps(result, indent=2) if args.json else result["answer"])
-        return
+        name = f"{args.gene.upper()} {args.change}"
+        pred = gnn_predict(name)
+        mech = max(pred["mechanism"], key=pred["mechanism"].get)
+        out = {
+            "prediction": pred,
+            "treatment": suggest_treatment(mech, gene=args.gene),
+            "assay": suggest_assay(args.gene),
+        }
+        print(json.dumps(out, indent=2))
+    elif args.cmd == "ask":
+        from .agent.agent import run_agent
 
-    from .pipeline import run_pipeline
-
-    result = run_pipeline(args.text, top_k=args.top_k)
-    if args.json:
-        print(json.dumps(result, indent=2))
+        print(run_agent(args.question, verbose=True)["answer"])
     else:
-        _print_pipeline(result)
+        from .agent.tools import map_symptoms
+
+        for t in map_symptoms(args.text):
+            print(f"{t['hpo_id']}  {t['label']}  (from \"{t['matched_text']}\")")
 
 
 if __name__ == "__main__":

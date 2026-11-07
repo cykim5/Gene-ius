@@ -5,8 +5,8 @@ For each patient term, find the most informative HPO term it shares with the dis
 Rare, specific matches count a lot; generic matches like "Abnormality of the nervous
 system" count almost nothing. Genes get the score of their best-matching disease.
 
-No training needed, so this is the first working version of rank_candidates() and
-the first baseline in the eval.
+No training needed. Used as the simple baseline for symptom-based questions
+in the agent benchmark.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import math
 from collections import Counter
 from functools import lru_cache
 
-from .data import HPO, KG, get_hpo, get_kg
+from ..data import HPO, KG, get_hpo, get_kg
 
 
 class OverlapRanker:

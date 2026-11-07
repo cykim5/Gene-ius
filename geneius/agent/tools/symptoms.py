@@ -1,4 +1,4 @@
-"""map_to_hpo: free-text symptoms -> HPO terms.
+"""map_symptoms: free-text symptoms -> HPO terms.
 
 Current version: offline dictionary matcher over HPO names + exact/layperson synonyms
 (longest phrase wins, simple plural handling). Fast and needs no API key.
@@ -12,8 +12,8 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
-from .. import config
-from ..data import get_hpo
+from ... import config
+from ...data import get_hpo
 from . import stubs
 
 _WORD = re.compile(r"[A-Za-z0-9]+")
@@ -43,10 +43,10 @@ def _index() -> tuple[dict[str, str], int]:
     return idx, min(longest, _MAX_PHRASE)
 
 
-def map_to_hpo(text: str) -> list[dict]:
+def map_symptoms(text: str) -> list[dict]:
     """Returns [{hpo_id, label, matched_text}] in the order they appear in the text."""
     if config.use_stubs():
-        return [dict(x) for x in stubs.MAP_TO_HPO]
+        return [dict(x) for x in stubs.MAP_SYMPTOMS]
     idx, maxlen = _index()
     hpo = get_hpo()
     spans = list(_WORD.finditer(text))

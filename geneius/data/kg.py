@@ -12,7 +12,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from . import config
+from .. import config
 
 HPO_ROOT = "HP:0000001"  # All
 PHENO_ROOT = "HP:0000118"  # Phenotypic abnormality

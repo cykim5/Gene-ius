@@ -1,19 +1,24 @@
-"""get_evidence_paths: why is this gene a candidate? Real paths from the knowledge graph.
+"""Graph tools: find_entity, expand, find_paths.
 
-Path types (most informative first):
+find_entity: works for genes, diseases, and HPO terms. TODO: variants.
+expand: stub. TODO: needs the full graph from graph/build.py.
+find_paths: works for symptom -> gene paths. TODO: variant patterns like
+variant -> protein -> symptom -> disease once variant nodes exist.
+
+find_paths path types (most informative first):
   phenotype -> gene                          (phenotype_protein edge)
   phenotype -> disease -> gene               (patient term is annotated on the disease)
   phenotype -> [is_a ...] -> disease -> gene (partial match through the HPO tree)
 """
 from __future__ import annotations
 
-from .. import config
-from ..baseline_overlap import get_overlap_ranker
-from ..data import HPO_ROOT, PHENO_ROOT, get_hpo, get_kg
+from ... import config
+from ...models.phenotype_overlap import get_overlap_ranker
+from ...data import HPO_ROOT, PHENO_ROOT, get_hpo, get_kg
 from . import stubs
 
 
-def get_evidence_paths(hpo_ids: list[str], gene: str, max_paths: int = 5) -> list[dict]:
+def find_paths(hpo_ids: list[str], gene: str, max_paths: int = 5) -> list[dict]:
     """Returns [{path: [{node_id, node_type, name}], relations: [str]}]."""
     if config.use_stubs():
         return stubs.evidence_paths(gene)[:max_paths]
@@ -71,3 +76,27 @@ def get_evidence_paths(hpo_ids: list[str], gene: str, max_paths: int = 5) -> lis
         if len(out) >= max_paths:
             break
     return out
+
+
+def find_entity(query: str) -> dict:
+    """Look up a gene, disease, or HPO term by name or ID. Returns {query, matches: [{node_id, node_type, name}]}."""
+    if config.use_stubs():
+        return stubs.find_entity(query)
+    kg, hpo = get_kg(), get_hpo()
+    q = query.strip()
+    ql = q.lower()
+    matches = []
+    if q.upper() in kg.gene_diseases:
+        matches.append({"node_id": q.upper(), "node_type": "gene", "name": q.upper()})
+    for d in kg.disease_hpo.keys() | kg.disease_genes.keys():
+        if d.lower() == ql:
+            matches.append({"node_id": d, "node_type": "disease", "name": d})
+    for t, name in hpo.names.items():
+        if t.lower() == ql or name.lower() == ql:
+            matches.append({"node_id": t, "node_type": "phenotype", "name": name})
+    return {"query": query, "matches": matches}
+
+
+def expand(node_id: str, node_type: str | None = None) -> dict:
+    """Neighbors of a node, optionally filtered by type. Returns {node_id, neighbors: [{node_id, node_type, relation}]}."""
+    return stubs.expand(node_id, node_type)

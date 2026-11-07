@@ -14,6 +14,10 @@ except ImportError:  # python-dotenv is optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# The 2023 freeze (Stage 0). Everything the model learns from must be available
+# at this date. Everything we test on was added after it. Change it only here.
+CUTOFF = "2023-01"
+
 
 def data_dir() -> Path:
     raw = os.environ.get("GENEIUS_DATA_DIR") or str(REPO_ROOT / "data")
@@ -25,11 +29,24 @@ def primekg_csv() -> Path:
 
 
 def hpo_obo() -> Path:
-    return data_dir() / "hp.obo"
+    """HPO from the cutoff date. Use hpo_obo_current() for the time-based test."""
+    return data_dir() / f"hp_{CUTOFF}.obo"
 
 
-def hpoa() -> Path:
-    return data_dir() / "phenotype.hpoa"
+def hpo_obo_current() -> Path:
+    return data_dir() / "hp_current.obo"
+
+
+def clinvar_cutoff() -> Path:
+    return data_dir() / f"variant_summary_{CUTOFF}.txt.gz"
+
+
+def clinvar_current() -> Path:
+    return data_dir() / "variant_summary_current.txt.gz"
+
+
+def alphamissense() -> Path:
+    return data_dir() / "AlphaMissense_aa_substitutions.tsv.gz"
 
 
 _warned = False
