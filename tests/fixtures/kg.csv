@@ -1,0 +1,18 @@
+relation,display_relation,x_index,x_id,x_type,x_name,x_source,y_index,y_id,y_type,y_name,y_source
+disease_phenotype_positive,phenotype present,0,D1,disease,Dravet syndrome,MONDO,10,1250,effect/phenotype,Seizure,HPO
+disease_phenotype_positive,phenotype present,0,D1,disease,Dravet syndrome,MONDO,11,2373,effect/phenotype,Febrile seizure,HPO
+disease_phenotype_positive,phenotype present,0,D1,disease,Dravet syndrome,MONDO,12,1263,effect/phenotype,Global developmental delay,HPO
+disease_phenotype_positive,phenotype present,13,1252,effect/phenotype,Hypotonia,HPO,0,D1,disease,Dravet syndrome,MONDO
+disease_phenotype_positive,phenotype present,1,D2,disease,Angelman syndrome,MONDO,10,1250,effect/phenotype,Seizure,HPO
+disease_phenotype_positive,phenotype present,1,D2,disease,Angelman syndrome,MONDO,12,1263,effect/phenotype,Global developmental delay,HPO
+disease_phenotype_positive,phenotype present,1,D2,disease,Angelman syndrome,MONDO,14,750,effect/phenotype,Delayed speech and language development,HPO
+disease_phenotype_positive,phenotype present,2,D3,disease,Usher syndrome,MONDO,15,510,effect/phenotype,Rod-cone dystrophy,HPO
+disease_phenotype_positive,phenotype present,2,D3,disease,Usher syndrome,MONDO,16,365,effect/phenotype,Hearing impairment,HPO
+disease_phenotype_positive,phenotype present,3,D4,disease,retinitis pigmentosa,MONDO,15,510,effect/phenotype,Rod-cone dystrophy,HPO
+disease_protein,associated with,0,D1,disease,Dravet syndrome,MONDO,20,6323,gene/protein,SCN1A,NCBI
+disease_protein,associated with,1,D2,disease,Angelman syndrome,MONDO,21,7337,gene/protein,UBE3A,NCBI
+disease_protein,associated with,2,D3,disease,Usher syndrome,MONDO,22,7399,gene/protein,USH2A,NCBI
+disease_protein,associated with,3,D4,disease,retinitis pigmentosa,MONDO,23,6010,gene/protein,RHO,NCBI
+disease_protein,associated with,22,7399,gene/protein,USH2A,NCBI,3,D4,disease,retinitis pigmentosa,MONDO
+phenotype_protein,associated with,10,1250,effect/phenotype,Seizure,HPO,20,6323,gene/protein,SCN1A,NCBI
+indication,indication,30,DB00001,drug,Stiripentol,DrugBank,0,D1,disease,Dravet syndrome,MONDO

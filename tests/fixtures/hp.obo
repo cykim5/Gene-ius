@@ -1,0 +1,73 @@
+format-version: 1.2
+ontology: hp
+
+[Term]
+id: HP:0000001
+name: All
+
+[Term]
+id: HP:0000118
+name: Phenotypic abnormality
+is_a: HP:0000001 ! All
+
+[Term]
+id: HP:0000707
+name: Abnormality of the nervous system
+is_a: HP:0000118 ! Phenotypic abnormality
+
+[Term]
+id: HP:0001250
+name: Seizure
+synonym: "Seizures" EXACT []
+synonym: "Fits" RELATED [] {layperson}
+alt_id: HP:0002279
+is_a: HP:0000707 ! Abnormality of the nervous system
+
+[Term]
+id: HP:0002373
+name: Febrile seizure
+synonym: "Fever induced seizures" EXACT []
+is_a: HP:0001250 ! Seizure
+
+[Term]
+id: HP:0001252
+name: Hypotonia
+synonym: "Low muscle tone" EXACT []
+is_a: HP:0000707 ! Abnormality of the nervous system
+
+[Term]
+id: HP:0000750
+name: Delayed speech and language development
+synonym: "Speech delay" EXACT []
+is_a: HP:0000707 ! Abnormality of the nervous system
+
+[Term]
+id: HP:0001263
+name: Global developmental delay
+is_a: HP:0000707 ! Abnormality of the nervous system
+
+[Term]
+id: HP:0000478
+name: Abnormality of the eye
+is_a: HP:0000118 ! Phenotypic abnormality
+
+[Term]
+id: HP:0000510
+name: Rod-cone dystrophy
+synonym: "Retinitis pigmentosa" EXACT []
+is_a: HP:0000478 ! Abnormality of the eye
+
+[Term]
+id: HP:0000365
+name: Hearing impairment
+synonym: "Hearing loss" EXACT []
+is_a: HP:0000118 ! Phenotypic abnormality
+
+[Term]
+id: HP:9999999
+name: Old obsolete term
+is_obsolete: true
+
+[Typedef]
+id: part_of
+name: part of

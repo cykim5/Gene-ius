@@ -1,0 +1,30 @@
+# Secrets: API keys live in .env only, never in the repo
+.env
+.env.*
+!.env.example
+
+# Data (large, re-downloadable with scripts/download_data.sh)
+data/
+*.csv.part
+
+# Eval outputs (regenerable)
+eval/data/simulated*.jsonl
+eval/data/heldout*.txt
+eval/results/
+
+# Model checkpoints
+checkpoints/
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
