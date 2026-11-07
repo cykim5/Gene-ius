@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioHack build checklist</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #F6F8F9;
+  --grid: #E8EDF1;
+  --surface: #FFFFFF;
+  --ink: #18222D;
+  --muted: #5B6B7A;
+  --line: #D5DEE6;
+  --soft: #EEF2F5;
+  --focus: #2B59C3;
+  --empty: #DCE3E9;
+  --data: #1F8A4C;
+  --structure: #2B59C3;
+  --model: #A86E12;
+  --agent: #C2362F;
+  --pitch: #6B4FB8;
+  --all: #3F4F5F;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #0F151C;
+    --grid: #151D26;
+    --surface: #141C25;
+    --ink: #E6EDF3;
+    --muted: #93A4B5;
+    --line: #263241;
+    --soft: #1A2430;
+    --focus: #6E95F0;
+    --empty: #24303D;
+    --data: #4CC47E;
+    --structure: #6E95F0;
+    --model: #E0A84A;
+    --agent: #F0716A;
+    --pitch: #A58CF0;
+    --all: #9AAABB;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+}
+.wrap { max-width: 780px; margin: 0 auto; padding: 32px 20px 64px; }
+header h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 8px; font-weight: 750; }
+header p { margin: 0 0 6px; color: var(--muted); font-size: 15px; max-width: 64ch; }
+header .meet { color: var(--ink); }
+
+.read { display: flex; flex-wrap: wrap; gap: 3px; margin: 22px 0 8px; }
+.seg { width: 14px; height: 30px; border-radius: 3px; background: var(--empty); transition: background-color .25s ease; }
+.seg.on { background: var(--c); }
+.count { font-size: 15px; font-weight: 650; color: var(--ink); margin: 0; font-variant-numeric: tabular-nums; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 22px 0 4px; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.field input {
+  font: inherit; font-size: 15px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 240px;
+}
+button { font: inherit; }
+.btn {
+  font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer;
+}
+.btn:hover { background: var(--soft); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.5em; margin: 6px 0 0; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 6px; }
+.filter {
+  display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px;
+  padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.filter .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.filter .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.filter[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.phase { margin-top: 30px; }
+.phase-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 2px;
+}
+.step { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 1.2em; }
+.phase-head h2 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+.when { margin-left: auto; font-size: 13px; color: var(--muted); }
+
+.tasks { list-style: none; margin: 0; padding: 0; }
+.task { padding: 11px 0; border-bottom: 1px solid var(--line); }
+.check { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.box {
+  flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--c);
+  border-radius: 4px; background: var(--surface); position: relative; transition: background-color .15s ease;
+}
+.check input:checked + .box { background: var(--c); }
+.check input:checked + .box::after {
+  content: ""; position: absolute; left: 5px; top: 1px; width: 6px; height: 11px;
+  border: solid var(--surface); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+.check input:focus-visible + .box { outline: 2px solid var(--focus); outline-offset: 2px; }
+.text { font-size: 15.5px; }
+.task.done .text { color: var(--muted); }
+.text code, .detail p code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em;
+  background: var(--soft); padding: 1px 4px; border-radius: 3px;
+}
+.meta {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center;
+  margin: 4px 0 0 32px; font-size: 12.5px; color: var(--muted);
+}
+.role { display: inline-flex; align-items: center; gap: 6px; }
+.role::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.more {
+  background: none; border: none; padding: 0; color: var(--focus); cursor: pointer;
+  font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px;
+}
+.detail { margin: 8px 0 2px 32px; font-size: 14px; color: var(--ink); max-width: 66ch; }
+.detail p { margin: 0 0 8px; }
+.detail ul { margin: 0 0 8px; padding-left: 18px; }
+.detail li { margin-bottom: 3px; }
+.code { position: relative; margin: 0 0 8px; }
+.code pre {
+  margin: 0; padding: 10px 70px 10px 12px; background: var(--soft);
+  border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; font-size: 12.5px;
+}
+.code code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+.code .copy { position: absolute; top: 6px; right: 6px; font-size: 12px; padding: 3px 9px; }
+
+footer {
+  margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 13px; color: var(--muted);
+}
+footer p { margin: 0; flex: 1 1 260px; }
+
+@media (max-width: 520px) {
+  .seg { width: 11px; height: 24px; }
+  header h1 { font-size: 26px; }
+  .field input { min-width: 0; width: 100%; }
+  .field { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+.conn { margin: 18px 0 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.conn summary { cursor: pointer; padding: 10px 14px; font-size: 14px; font-weight: 600; list-style: none; }
+.conn summary::-webkit-details-marker { display: none; }
+.conn summary::before { content: "▸"; display: inline-block; width: 1em; color: var(--muted); transition: transform .15s ease; }
+.conn[open] summary::before { transform: rotate(90deg); }
+.conn .state { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.conn-body { padding: 4px 14px 14px; display: grid; gap: 12px; }
+.conn-body .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.conn-body .hint { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 66ch; }
+.conn-body .field input { min-width: 200px; }
+.linkish { font-size: 14px; color: var(--focus); text-decoration: underline; text-underline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>BioHack build checklist</h1>
+    <p>Mechanism-aware VUS agent, Nucleate Pittsburgh BioHack 2026. Check tasks off as you finish them. Progress is saved in a GitHub issue, so everyone sees the same thing.</p>
+    <p class="meet">Office hours with Ben: 4 to 5 pm. Bring the VUS counts, the first baseline numbers, and a short agent demo.</p>
+    <div id="read" class="read" aria-hidden="true"></div>
+    <p id="count" class="count" aria-live="polite"></p>
+  </header>
+
+  <div class="controls">
+    <label class="field">Your name, shown next to tasks you check
+      <input id="name" type="text" maxlength="40" placeholder="e.g. Omar" autocomplete="off">
+    </label>
+    <button id="refresh" class="btn" type="button">Refresh</button>
+    <a id="issueLink" class="linkish" href="#" target="_blank" rel="noopener" hidden>Open the issue on GitHub</a>
+  </div>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <details id="conn" class="conn">
+    <summary>GitHub connection <span id="connState" class="state"></span></summary>
+    <div class="conn-body">
+      <p class="hint">Anyone can view progress. To check tasks from this page, add a GitHub token. It's stored only in this browser and only sent to GitHub.</p>
+      <div class="row">
+        <label class="field">Repository (owner/name)
+          <input id="cfgRepo" type="text" placeholder="your-username/your-repo" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field">Issue number (optional)
+          <input id="cfgIssue" type="text" inputmode="numeric" placeholder="found automatically" autocomplete="off">
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">Your GitHub token
+          <input id="cfgToken" type="password" placeholder="ghp_… or github_pat_…" autocomplete="off" spellcheck="false">
+        </label>
+        <button id="saveCfg" class="btn" type="button">Save connection</button>
+        <button id="forgetToken" class="btn" type="button">Remove token</button>
+      </div>
+      <p class="hint">Setup, done once by whoever owns the repo: save a token, then choose Create the checklist issue. Teammates then only need the page link and their own token.</p>
+      <div class="row">
+        <button id="createIssue" class="btn" type="button">Create the checklist issue</button>
+        <button id="writeIssue" class="btn" type="button">Write checklist into the issue</button>
+        <button id="copyMd" class="btn" type="button">Copy checklist text</button>
+      </div>
+    </div>
+  </details>
+
+  <div id="filters" class="filters" role="group" aria-label="Show tasks for"></div>
+
+  <div id="phases"></div>
+
+  <footer>
+    <p>Progress lives in the GitHub issue titled “BioHack build checklist.” Ticking a box in the issue updates this page too.</p>
+    <button id="reset" class="btn" type="button">Reset all checks</button>
+  </footer>
+</div>
+
+<script>
+const ROLES = {
+  all: { label: "Everyone", color: "var(--all)" },
+  data: { label: "Data", color: "var(--data)" },
+  structure: { label: "Structure", color: "var(--structure)" },
+  model: { label: "Model", color: "var(--model)" },
+  agent: { label: "Agent and demo", color: "var(--agent)" },
+  pitch: { label: "Validation and pitch", color: "var(--pitch)" },
+};
+const ROLE_KEYS = Object.keys(ROLES);
+
+const PHASES = {
+  1: { title: "Set up", when: "Right now" },
+  2: { title: "Data and setup", when: "Until noon" },
+  3: { title: "Noon checkpoint", when: "12:00" },
+  4: { title: "First working version", when: "Noon to 3:30" },
+  5: { title: "Prepare for Ben", when: "3:30" },
+  6: { title: "Office hours with Ben", when: "4:00 to 5:00" },
+};
+
+const TASKS = [
+  // Phase 1
+  { id: "a-slack", phase: 1, role: "all",
+    text: "Post your email, team name, members, and problem statement in the pinned message of #team-formation on Slack",
+    detail: [{ p: "Everyone has to do this. Update the message if anything changes." }] },
+  { id: "a-hackhub", phase: 1, role: "all",
+    text: "Register the team on HackHub and select the NVIDIA problem statement",
+    detail: [{ p: "Teams are 3 to 5 people. Sign in with Google or any email, then choose Register Your Team on the landing page." }] },
+  { id: "a-huddle", phase: 1, role: "all",
+    text: "10-minute huddle: assign roles and agree on data formats",
+    detail: [
+      { p: "Agree on three things so everyone can work in parallel:" },
+      { list: [
+        "Variant table columns: variant ID, gene, UniProt ID, position, original amino acid, new amino acid, 2023 class, current class, review stars, disease",
+        "Prediction file: variant ID with a score for each output",
+        "Agent tools: each tool's name, inputs, and outputs",
+      ] },
+    ] },
+  { id: "p-rubric", phase: 1, role: "pitch",
+    text: "Find the judging criteria on HackHub and share a screenshot with the team" },
+
+  // Phase 2: Data
+  { id: "d-colab", phase: 2, role: "data",
+    text: "Open Colab with a GPU runtime and confirm the GPU works",
+    detail: [
+      { p: "Runtime → Change runtime type → T4 GPU → Save. Then run this and look for a table that names the GPU:" },
+      { code: `!nvidia-smi` },
+    ] },
+  { id: "d-current", phase: 2, role: "data",
+    text: "Download the current ClinVar <code>variant_summary</code> file",
+    detail: [
+      { code: `!wget -q --show-progress https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz
+!ls -lh variant_summary.txt.gz` },
+      { p: "It's about 440 MB." },
+    ] },
+  { id: "d-2023", phase: 2, role: "data",
+    text: "Find and download the early-2023 ClinVar release from the archive",
+    detail: [
+      { p: "List the archive first, then pick the January 2023 <code>variant_summary</code> file:" },
+      { code: `!curl -s https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/archive/ | grep -o 'href="[^"]*"' | head -40` },
+    ] },
+  { id: "d-filter", phase: 2, role: "data",
+    text: "Load both files and keep GRCh38 rows for our panel genes",
+    detail: [
+      { p: "Retina: RHO, ABCA4, GUCY2D, CRX, PRPH2, RPE65, CEP290, BEST1, NR2E3, RPGR, OPA1, PAX6, USH2A." },
+      { p: "Cardiac: SCN5A, KCNQ1, KCNH2, KCNJ2, CACNA1C, MYH7, MYBPC3, LMNA, PKP2. Optional: GLA." },
+      { p: "Check the column headers in each release. ClinVar has renamed some classification columns over time." },
+    ] },
+  { id: "d-missense", phase: 2, role: "data",
+    text: "Keep missense variants and parse the protein change",
+    detail: [{ p: "The Name column holds the protein change. For example, <code>p.Arg1193Gln</code> means original R, position 1193, new Q. Drop synonymous (<code>p.=</code>), nonsense (<code>Ter</code>), and frameshift (<code>fs</code>) changes." }] },
+  { id: "d-merge", phase: 2, role: "data",
+    text: "Merge the two releases and record the 2023 class, current class, and review stars",
+    detail: [{ p: "Merge on VariationID. Combine pathogenic with likely pathogenic, and benign with likely benign. Exclude conflicting interpretations." }] },
+  { id: "d-counts", phase: 2, role: "data",
+    text: "Count reclassified VUS per gene and post the counts to the team",
+    detail: [{ p: "Count variants that were VUS in 2023 and are now pathogenic, likely pathogenic, benign, or likely benign with 2 or more review stars. This is the go/no-go number for the headline test." }] },
+  { id: "d-mech", phase: 2, role: "data",
+    text: "Count mechanism labels per gene",
+    detail: [{ p: "Use LoGoFunc labels and the published RHO mechanism classes. If retina has few labels, the mechanism demo moves to the cardiac channels." }] },
+
+  // Phase 2: Structure
+  { id: "s-uniprot", phase: 2, role: "structure",
+    text: "Look up the reviewed human UniProt ID for each panel gene" },
+  { id: "s-features", phase: 2, role: "structure",
+    text: "Download each protein's sequence and features from UniProt",
+    detail: [
+      { code: `https://rest.uniprot.org/uniprotkb/<UniProt_ID>.json` },
+      { p: "Keep domains, transmembrane segments, topological domains, active and binding sites, disulfide bonds, and modified residues." },
+    ] },
+  { id: "s-alphafold", phase: 2, role: "structure",
+    text: "Download the AlphaFold structure for each protein",
+    detail: [{ p: "Search the UniProt ID on alphafold.ebi.ac.uk and download the PDB file. USH2A, RYR2, and TTN are split into fragments, so skip their 3D edges." }] },
+  { id: "s-esm", phase: 2, role: "structure",
+    text: "Set up ESM-2 with sliding windows for long proteins",
+    detail: [{ p: "ESM-2 handles about 1,000 amino acids at a time. SCN5A, ABCA4, and CEP290 are longer, so use a window centered on each variant." }] },
+  { id: "s-residue", phase: 2, role: "structure",
+    text: "Run the residue check once the variant table exists",
+    detail: [{ p: "Confirm the original amino acid matches UniProt's sequence at that position. Drop mismatches and record how many." }] },
+
+  // Phase 2: Model
+  { id: "m-pyg", phase: 2, role: "model",
+    text: "Install PyTorch Geometric and confirm PyTorch sees the GPU",
+    detail: [{ code: `!pip install torch_geometric
+import torch
+print(torch.cuda.is_available())` }] },
+  { id: "m-primekg", phase: 2, role: "model",
+    text: "Download PrimeKG and check its node types",
+    detail: [{ p: "Search Harvard Dataverse for PrimeKG and download <code>kg.csv</code>. Confirm it has gene/protein, disease, and effect/phenotype nodes." }] },
+  { id: "m-xgb", phase: 2, role: "model",
+    text: "Confirm XGBoost runs on the GPU",
+    detail: [{ code: `import xgboost as xgb
+model = xgb.XGBClassifier(device="cuda", tree_method="hist")` }] },
+
+  // Phase 2: Agent and demo
+  { id: "g-nebius", phase: 2, role: "agent",
+    text: "Redeem Nebius credits and make one LLM call",
+    detail: [{ p: "Scan the QR code on the opening slides ($100 per person). Keep the API key in an environment variable, never in code or on GitHub." }] },
+  { id: "g-stubs", phase: 2, role: "agent",
+    text: "Write stub tools that return dummy outputs",
+    detail: [{ p: "Start with <code>find_entity</code>, <code>expand</code>, and <code>gnn_predict</code>, using the tool format agreed in the huddle." }] },
+  { id: "g-viewer", phase: 2, role: "agent",
+    text: "Show the RHO AlphaFold structure in a notebook with py3Dmol",
+    detail: [{ code: `!pip install py3Dmol` }] },
+  { id: "g-argosx", phase: 2, role: "agent",
+    text: "Sign up for ArgosX and ask which hosting URLs they accept",
+    detail: [
+      { p: "Team code:" },
+      { code: `NUCLEATE-BH26` },
+      { p: "Ask in #argosx-questions whether Streamlit Cloud or Hugging Face Spaces URLs work, or only Vercel and Amplify." },
+    ] },
+
+  // Phase 2: Pitch
+  { id: "p-templates", phase: 2, role: "pitch",
+    text: "Write 10 benchmark question templates for the agent",
+    detail: [{ list: [
+      "Which disease does variant X cause, and why?",
+      "Which genes share symptom Y and have mouse evidence?",
+      "Why does variant V1 cause disease A while V2 causes disease B?",
+    ] }] },
+  { id: "p-slides", phase: 2, role: "pitch",
+    text: "Make a slide skeleton with placeholder numbers",
+    detail: [{ p: "Five sections: the problem, what we built, the demo, results, and who uses it." }] },
+
+  // Phase 3
+  { id: "c-gonogo", phase: 3, role: "all",
+    text: "Go/no-go on the VUS counts",
+    detail: [{ p: "If there are enough, continue. If too few, widen to whole gene families (RetNet retinal genes, all sodium and potassium channels) or move the cutoff earlier, and pick the backup headline." }] },
+  { id: "c-mechdemo", phase: 3, role: "all",
+    text: "Decide where the mechanism demo lives: retina or cardiac" },
+
+  // Phase 4
+  { id: "d-labels", phase: 4, role: "data",
+    text: "Build the labels table and apply the leakage rules",
+    detail: [{ p: "Remove VUS-to-disease edges and train only on 2023 releases. See Stage 0 in the project plan." }] },
+  { id: "s-featuretable", phase: 4, role: "structure",
+    text: "Build the feature table",
+    detail: [{ p: "AlphaMissense score, pLDDT, buried vs surface, UniProt region flags, distance to functional sites, and relative position." }] },
+  { id: "m-graph", phase: 4, role: "model",
+    text: "Build the graph as PyG HeteroData",
+    detail: [{ p: "PrimeKG plus variant nodes and variant-to-gene edges. Add reverse edges with <code>ToUndirected</code>." }] },
+  { id: "m-baselines", phase: 4, role: "model",
+    text: "Run the AlphaMissense and XGBoost baselines and post the first numbers" },
+  { id: "g-agentq", phase: 4, role: "agent",
+    text: "Get the agent to answer one question through the graph" },
+  { id: "g-app", phase: 4, role: "agent",
+    text: "Build a basic app with the 3D viewer showing one protein" },
+  { id: "p-curve", phase: 4, role: "pitch",
+    text: "Write the time-saved curve code so it's ready when predictions exist" },
+  { id: "p-draft", phase: 4, role: "pitch",
+    text: "Draft the slides" },
+
+  // Phase 5
+  { id: "r-collect", phase: 5, role: "all",
+    text: "Collect what to show Ben: the counts, first baseline numbers, and a short agent demo" },
+  { id: "r-questions", phase: 5, role: "pitch",
+    text: "Pick the top questions for Ben",
+    detail: [{ list: [
+      "Should the agent part be bigger, or should we focus on the variant predictions?",
+      "What validation would convince you?",
+      "Is PrimeKG plus ClinVar a good base?",
+      "Which NVIDIA tools would you like to see used?",
+    ] }] },
+
+  // Phase 6
+  { id: "b-meet", phase: 6, role: "all",
+    text: "Meet Ben: show results, ask the questions, and write down his exact words" },
+  { id: "b-update", phase: 6, role: "all",
+    text: "Update priorities based on his feedback" },
+];
+
+
+
+// ---------- config ----------
+const ISSUE_TITLE = "BioHack build checklist";
+const LS = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage blocked */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* storage blocked */ } },
+};
+function inferRepo() {
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/i);
+  if (!m) return "";
+  const seg = location.pathname.split("/").filter(Boolean)[0];
+  if (!seg || /\.html?$/i.test(seg)) return m[1] + "/" + m[1] + ".github.io";
+  return m[1] + "/" + seg;
+}
+const params = new URLSearchParams(location.search);
+const cfg = {
+  repo: (params.get("repo") || LS.get("bh_repo") || inferRepo()).trim(),
+  issue: (params.get("issue") || LS.get("bh_issue") || "").trim(),
+  token: (LS.get("bh_token") || "").trim(),
+};
+
+// ---------- state ----------
+let done = {};          // task id -> { by, at }
+let myName = LS.get("bh_name") || "";
+let filter = "every";
+let etag = null;
+let lastLoad = 0;
+
+const statusEl = document.getElementById("status");
+const countEl = document.getElementById("count");
+const readEl = document.getElementById("read");
+const nameInput = document.getElementById("name");
+const filtersEl = document.getElementById("filters");
+const phasesEl = document.getElementById("phases");
+const issueLink = document.getElementById("issueLink");
+const conn = document.getElementById("conn");
+const connState = document.getElementById("connState");
+const cfgRepo = document.getElementById("cfgRepo");
+const cfgIssue = document.getElementById("cfgIssue");
+const cfgToken = document.getElementById("cfgToken");
+const refs = {};
+
+nameInput.value = myName;
+cfgRepo.value = cfg.repo;
+cfgIssue.value = cfg.issue;
+
+function setStatus(msg) { statusEl.textContent = msg; }
+function timeStr(ms) {
+  try { return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+  catch (e) { return ""; }
+}
+function updateConnState() {
+  connState.textContent = cfg.token ? "(token saved: you can check tasks)" : "(view only: add a token to check tasks)";
+}
+function openSettings() { conn.open = true; }
+
+// ---------- build UI ----------
+const segs = TASKS.map((t) => {
+  const s = document.createElement("span");
+  s.className = "seg";
+  s.style.setProperty("--c", ROLES[t.role].color);
+  readEl.appendChild(s);
+  return s;
+});
+
+const filterDefs = [{ key: "every", label: "All tasks", color: "var(--all)" }]
+  .concat(ROLE_KEYS.filter((r) => r !== "all").map((r) => ({ key: r, label: ROLES[r].label, color: ROLES[r].color })));
+const filterBtns = filterDefs.map((f) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "filter";
+  b.dataset.role = f.key;
+  b.style.setProperty("--c", f.color);
+  b.setAttribute("aria-pressed", f.key === filter ? "true" : "false");
+  const dot = document.createElement("span"); dot.className = "dot"; dot.setAttribute("aria-hidden", "true");
+  const label = document.createElement("span"); label.textContent = f.label;
+  const n = document.createElement("span"); n.className = "n";
+  b.append(dot, label, n);
+  b.addEventListener("click", () => {
+    filter = f.key;
+    filterBtns.forEach((x) => x.setAttribute("aria-pressed", x.dataset.role === filter ? "true" : "false"));
+    applyFilter();
+  });
+  filtersEl.appendChild(b);
+  return b;
+});
+
+async function copyText(txt, btn, idleLabel) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) { ok = false; }
+  if (!ok) {
+    const ta = document.createElement("textarea");
+    ta.value = txt;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute"; ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+  }
+  btn.textContent = ok ? "Copied" : "Couldn't copy";
+  setTimeout(() => { btn.textContent = idleLabel; }, 1600);
+}
+
+function buildDetail(t) {
+  const det = document.createElement("div");
+  det.className = "detail";
+  det.id = "det-" + t.id;
+  det.hidden = true;
+  t.detail.forEach((part) => {
+    if (part.p) {
+      const p = document.createElement("p");
+      p.innerHTML = part.p;
+      det.appendChild(p);
+    } else if (part.list) {
+      const ul = document.createElement("ul");
+      part.list.forEach((item) => { const li = document.createElement("li"); li.textContent = item; ul.appendChild(li); });
+      det.appendChild(ul);
+    } else if (part.code) {
+      const wrap = document.createElement("div"); wrap.className = "code";
+      const pre = document.createElement("pre"); const code = document.createElement("code");
+      code.textContent = part.code;
+      pre.appendChild(code);
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn copy"; btn.textContent = "Copy";
+      btn.addEventListener("click", () => copyText(part.code, btn, "Copy"));
+      wrap.append(pre, btn);
+      det.appendChild(wrap);
+    }
+  });
+  return det;
+}
+
+function buildTask(t) {
+  const li = document.createElement("li");
+  li.className = "task";
+  li.style.setProperty("--c", ROLES[t.role].color);
+  const label = document.createElement("label");
+  label.className = "check";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.id = "cb-" + t.id;
+  const box = document.createElement("span"); box.className = "box"; box.setAttribute("aria-hidden", "true");
+  const text = document.createElement("span"); text.className = "text"; text.innerHTML = t.text;
+  label.append(input, box, text);
+  const meta = document.createElement("div"); meta.className = "meta";
+  const role = document.createElement("span"); role.className = "role"; role.textContent = ROLES[t.role].label;
+  const by = document.createElement("span"); by.className = "by";
+  meta.append(role, by);
+  li.append(label, meta);
+  if (t.detail) {
+    const det = buildDetail(t);
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "more"; btn.textContent = "Details";
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-controls", det.id);
+    btn.addEventListener("click", () => {
+      const open = det.hidden;
+      det.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      btn.textContent = open ? "Hide details" : "Details";
+    });
+    meta.appendChild(btn);
+    li.appendChild(det);
+  }
+  input.addEventListener("change", () => toggle(t, input.checked));
+  refs[t.id] = { li, input, by };
+  return li;
+}
+
+Object.keys(PHASES).forEach((num) => {
+  const ph = PHASES[num];
+  const sec = document.createElement("section");
+  sec.className = "phase";
+  const head = document.createElement("div"); head.className = "phase-head";
+  const step = document.createElement("span"); step.className = "step"; step.textContent = num;
+  const h2 = document.createElement("h2"); h2.textContent = ph.title;
+  const when = document.createElement("span"); when.className = "when"; when.textContent = ph.when;
+  head.append(step, h2, when);
+  const ul = document.createElement("ul"); ul.className = "tasks";
+  TASKS.filter((t) => String(t.phase) === num).forEach((t) => ul.appendChild(buildTask(t)));
+  sec.append(head, ul);
+  phasesEl.appendChild(sec);
+});
+
+// ---------- render ----------
+function applyFilter() {
+  TASKS.forEach((t) => {
+    const show = filter === "every" || t.role === filter || t.role === "all";
+    refs[t.id].li.hidden = !show;
+  });
+  document.querySelectorAll(".phase").forEach((sec) => {
+    const any = Array.from(sec.querySelectorAll(".task")).some((li) => !li.hidden);
+    sec.hidden = !any;
+  });
+}
+
+function updateAll() {
+  let n = 0;
+  TASKS.forEach((t, i) => {
+    const e = done[t.id];
+    const ref = refs[t.id];
+    ref.input.checked = !!e;
+    ref.li.classList.toggle("done", !!e);
+    let byText = "";
+    if (e) {
+      byText = e.by ? "Done by " + e.by : "Done";
+      if (e.at) byText += " at " + timeStr(e.at);
+    }
+    ref.by.textContent = byText;
+    segs[i].classList.toggle("on", !!e);
+    if (e) n++;
+  });
+  countEl.textContent = n + " of " + TASKS.length + " tasks done";
+  filterBtns.forEach((b) => {
+    const r = b.dataset.role;
+    const list = r === "every" ? TASKS : TASKS.filter((t) => t.role === r);
+    const d = list.filter((t) => done[t.id]).length;
+    b.querySelector(".n").textContent = d + "/" + list.length;
+  });
+  applyFilter();
+}
+
+// ---------- issue markdown ----------
+const LINE_RE = /^(\s*[-*]\s+\[)([ xX])(\].*?)<!--\s*id:([A-Za-z0-9_-]+)([^>]*?)-->\s*$/;
+
+function parseMeta(s) {
+  const m = {};
+  s.trim().split(/\s+/).forEach((kv) => {
+    const i = kv.indexOf("=");
+    if (i > 0) {
+      try { m[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); } catch (e) { m[kv.slice(0, i)] = kv.slice(i + 1); }
+    }
+  });
+  return m;
+}
+
+function metaFor(entry) {
+  if (!entry) return "";
+  return " by=" + encodeURIComponent(entry.by || "") + " at=" + (entry.at || Date.now());
+}
+
+function taskLine(t, entry) {
+  const text = t.text.replace(/<code>(.*?)<\/code>/g, "`$1`").replace(/<[^>]+>/g, "");
+  return "- [" + (entry ? "x" : " ") + "] **" + ROLES[t.role].label + ":** " + text + " <!-- id:" + t.id + metaFor(entry) + " -->";
+}
+
+function buildMarkdown(state) {
+  const out = ["Team checklist for the BioHack build. Tick boxes here or on the checklist page; both stay in sync.", ""];
+  Object.keys(PHASES).forEach((num) => {
+    const ph = PHASES[num];
+    out.push("## " + num + ". " + ph.title + " (" + ph.when + ")");
+    TASKS.filter((t) => String(t.phase) === num).forEach((t) => out.push(taskLine(t, state[t.id])));
+    out.push("");
+  });
+  return out.join("\n");
+}
+
+function parseBody(body) {
+  const state = {};
+  const found = new Set();
+  (body || "").split(/\r?\n/).forEach((line) => {
+    const m = line.match(LINE_RE);
+    if (!m) return;
+    found.add(m[4]);
+    if (m[2].toLowerCase() === "x") {
+      const meta = parseMeta(m[5]);
+      state[m[4]] = { by: meta.by || "", at: meta.at ? Number(meta.at) : 0 };
+    }
+  });
+  const missing = TASKS.filter((t) => !found.has(t.id)).length;
+  return { state, missing };
+}
+
+// ---------- GitHub API ----------
+async function gh(path, opts) {
+  opts = opts || {};
+  const headers = { "Accept": "application/vnd.github+json" };
+  if (cfg.token) headers["Authorization"] = "Bearer " + cfg.token;
+  if (opts.body) headers["Content-Type"] = "application/json";
+  if (opts.etag) headers["If-None-Match"] = opts.etag;
+  return fetch("https://api.github.com" + path, {
+    method: opts.method || "GET",
+    headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    cache: "no-store",
+  });
+}
+
+async function httpError(res) {
+  if (res.status === 401) return new Error("GitHub rejected the token. Check it under GitHub connection, or remove it to view only.");
+  if (res.status === 403 || res.status === 429) {
+    if (res.headers.get("x-ratelimit-remaining") === "0") {
+      return new Error("GitHub's hourly limit for this browser was reached. Add a token under GitHub connection, or wait a few minutes and press Refresh.");
+    }
+    return new Error("GitHub refused the change. Your token needs permission to edit issues in " + cfg.repo + ", and you need to be a collaborator on the repo.");
+  }
+  if (res.status === 404) return new Error("Couldn't find " + cfg.repo + (cfg.issue ? " issue #" + cfg.issue : "") + ". Check the repository name and issue number. Private repos also need a token.");
+  if (res.status === 410) return new Error("Issues are turned off for " + cfg.repo + ". Turn them on in the repo's Settings.");
+  return new Error("GitHub returned an error (" + res.status + "). Press Refresh to try again.");
+}
+
+async function findIssue() {
+  const res = await gh("/repos/" + cfg.repo + "/issues?state=open&per_page=100");
+  if (!res.ok) throw await httpError(res);
+  const list = await res.json();
+  const hit = list.find((i) => !i.pull_request && (i.title || "").trim() === ISSUE_TITLE);
+  return hit ? String(hit.number) : "";
+}
+
+async function fetchIssue() {
+  const res = await gh("/repos/" + cfg.repo + "/issues/" + cfg.issue);
+  if (!res.ok) throw await httpError(res);
+  return res.json();
+}
+
+function showIssue(issue) {
+  const parsed = parseBody(issue.body || "");
+  done = parsed.state;
+  updateAll();
+  if (issue.html_url) { issueLink.href = issue.html_url; issueLink.hidden = false; }
+  return parsed.missing;
+}
+
+async function loadIssue(showStatus) {
+  if (!cfg.repo) {
+    setStatus("Enter the repository under GitHub connection, or open this page from its GitHub Pages link.");
+    openSettings();
+    return;
+  }
+  try {
+    if (showStatus) setStatus("Loading team progress from GitHub…");
+    if (!cfg.issue) {
+      const n = await findIssue();
+      if (!n) {
+        setStatus("There's no open issue titled “" + ISSUE_TITLE + "” in " + cfg.repo + " yet. Add a token under GitHub connection, then choose Create the checklist issue.");
+        openSettings();
+        return;
+      }
+      cfg.issue = n;
+      cfgIssue.value = n;
+    }
+    const res = await gh("/repos/" + cfg.repo + "/issues/" + cfg.issue, { etag });
+    lastLoad = Date.now();
+    if (res.status === 304) { setStatus("Up to date as of " + timeStr(Date.now())); return; }
+    if (!res.ok) throw await httpError(res);
+    etag = res.headers.get("ETag");
+    const missing = showIssue(await res.json());
+    if (missing) setStatus((missing === 1 ? "1 task isn't" : missing + " tasks aren't") + " in the GitHub issue yet. Choose Write checklist into the issue to add them.");
+    else setStatus("Up to date as of " + timeStr(Date.now()));
+  } catch (e) {
+    setStatus(e.message || "Couldn't reach GitHub. Check your connection and press Refresh.");
+  }
+}
+
+async function toggle(task, checked) {
+  if (!cfg.token) {
+    refs[task.id].input.checked = !checked;
+    setStatus("To check tasks from this page, add your GitHub token under GitHub connection. You can also tick it directly in the GitHub issue.");
+    openSettings();
+    return;
+  }
+  if (!cfg.issue) {
+    refs[task.id].input.checked = !checked;
+    setStatus("The checklist issue isn't set up yet. Choose Create the checklist issue under GitHub connection.");
+    openSettings();
+    return;
+  }
+  const prev = done[task.id];
+  const entry = { by: myName.trim() || "teammate", at: Date.now() };
+  if (checked) done[task.id] = entry; else delete done[task.id];
+  updateAll();
+  setStatus("Saving to GitHub…");
+  try {
+    const issue = await fetchIssue();
+    let hit = false;
+    const lines = (issue.body || "").split(/\r?\n/).map((line) => {
+      const m = line.match(LINE_RE);
+      if (!m || m[4] !== task.id) return line;
+      hit = true;
+      return m[1] + (checked ? "x" : " ") + m[3] + "<!-- id:" + task.id + (checked ? metaFor(entry) : "") + " -->";
+    });
+    if (!hit) throw new Error("This task isn't in the GitHub issue yet. Choose Write checklist into the issue, then try again.");
+    const res = await gh("/repos/" + cfg.repo + "/issues/" + cfg.issue, { method: "PATCH", body: { body: lines.join("\n") } });
+    if (!res.ok) throw await httpError(res);
+    etag = null;
+    showIssue(await res.json());
+    setStatus(checked ? "Checked and saved to GitHub" : "Unchecked and saved to GitHub");
+  } catch (e) {
+    if (prev) done[task.id] = prev; else delete done[task.id];
+    updateAll();
+    setStatus(e.message || "Couldn't save to GitHub. Press Refresh and try again.");
+  }
+}
+
+// ---------- connection panel ----------
+function saveCfg() {
+  cfg.repo = cfgRepo.value.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\/+$/, "");
+  cfg.issue = cfgIssue.value.trim().replace(/^#/, "");
+  const tok = cfgToken.value.trim();
+  if (tok) { cfg.token = tok; LS.set("bh_token", tok); cfgToken.value = ""; }
+  LS.set("bh_repo", cfg.repo);
+  if (cfg.issue) LS.set("bh_issue", cfg.issue); else LS.del("bh_issue");
+  etag = null;
+  updateConnState();
+}
+
+document.getElementById("saveCfg").addEventListener("click", () => {
+  saveCfg();
+  setStatus("Connection saved.");
+  loadIssue(true);
+});
+
+document.getElementById("forgetToken").addEventListener("click", () => {
+  cfg.token = "";
+  LS.del("bh_token");
+  cfgToken.value = "";
+  updateConnState();
+  setStatus("Token removed from this browser. You can still view progress.");
+});
+
+document.getElementById("copyMd").addEventListener("click", (ev) => {
+  copyText(buildMarkdown(done), ev.currentTarget, "Copy checklist text");
+});
+
+document.getElementById("createIssue").addEventListener("click", async () => {
+  saveCfg();
+  if (!cfg.repo) { setStatus("Enter the repository first (owner/name)."); return; }
+  if (!cfg.token) { setStatus("Add a token first. Creating the issue needs permission to write issues."); return; }
+  try {
+    setStatus("Checking for an existing checklist issue…");
+    const existing = cfg.issue || (await findIssue());
+    if (existing) {
+      cfg.issue = existing; cfgIssue.value = existing; LS.set("bh_issue", existing);
+      setStatus("A checklist issue already exists (#" + existing + "). Loading it.");
+      etag = null;
+      await loadIssue(false);
+      return;
+    }
+    setStatus("Creating the checklist issue…");
+    const res = await gh("/repos/" + cfg.repo + "/issues", { method: "POST", body: { title: ISSUE_TITLE, body: buildMarkdown(done) } });
+    if (!res.ok) throw await httpError(res);
+    const issue = await res.json();
+    cfg.issue = String(issue.number); cfgIssue.value = cfg.issue; LS.set("bh_issue", cfg.issue);
+    etag = null;
+    showIssue(issue);
+    setStatus("Created issue #" + issue.number + ". Share this page's link with your team.");
+  } catch (e) {
+    setStatus(e.message || "Couldn't create the issue.");
+  }
+});
+
+let writeArmed = false;
+let writeTimer = null;
+const writeBtn = document.getElementById("writeIssue");
+writeBtn.addEventListener("click", async () => {
+  saveCfg();
+  if (!cfg.token || !cfg.issue) { setStatus("This needs a token and an existing checklist issue."); return; }
+  if (!writeArmed) {
+    writeArmed = true;
+    writeBtn.textContent = "Click again to rewrite the issue";
+    writeTimer = setTimeout(() => { writeArmed = false; writeBtn.textContent = "Write checklist into the issue"; }, 4000);
+    return;
+  }
+  clearTimeout(writeTimer); writeArmed = false; writeBtn.textContent = "Write checklist into the issue";
+  try {
+    setStatus("Rewriting the issue, keeping current checks…");
+    const issue = await fetchIssue();
+    const current = parseBody(issue.body || "").state;
+    const res = await gh("/repos/" + cfg.repo + "/issues/" + cfg.issue, { method: "PATCH", body: { body: buildMarkdown(current) } });
+    if (!res.ok) throw await httpError(res);
+    etag = null;
+    showIssue(await res.json());
+    setStatus("The issue now has all " + TASKS.length + " tasks.");
+  } catch (e) {
+    setStatus(e.message || "Couldn't rewrite the issue.");
+  }
+});
+
+// ---------- other controls ----------
+nameInput.addEventListener("change", () => {
+  myName = nameInput.value.trim();
+  LS.set("bh_name", myName);
+});
+
+document.getElementById("refresh").addEventListener("click", () => { etag = null; loadIssue(true); });
+
+const resetBtn = document.getElementById("reset");
+let resetArmed = false;
+let resetTimer = null;
+resetBtn.addEventListener("click", async () => {
+  if (!cfg.token || !cfg.issue) {
+    setStatus("Resetting needs a token and the checklist issue. See GitHub connection.");
+    openSettings();
+    return;
+  }
+  if (!resetArmed) {
+    resetArmed = true;
+    resetBtn.textContent = "Click again to clear every check";
+    resetTimer = setTimeout(() => { resetArmed = false; resetBtn.textContent = "Reset all checks"; }, 4000);
+    return;
+  }
+  clearTimeout(resetTimer); resetArmed = false; resetBtn.textContent = "Reset all checks";
+  try {
+    const res = await gh("/repos/" + cfg.repo + "/issues/" + cfg.issue, { method: "PATCH", body: { body: buildMarkdown({}) } });
+    if (!res.ok) throw await httpError(res);
+    etag = null;
+    showIssue(await res.json());
+    setStatus("All checks cleared for the team.");
+  } catch (e) {
+    setStatus(e.message || "Couldn't clear the checks.");
+  }
+});
+
+// Refresh on a timer. Without a token, GitHub allows about 60 requests an hour per browser.
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  const gap = cfg.token ? 45000 : 90000;
+  if (Date.now() - lastLoad >= gap) loadIssue(false);
+}, 15000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() - lastLoad > 20000) loadIssue(false);
+});
+
+updateConnState();
+updateAll();
+loadIssue(true);
+
+</script>
+</body>
+</html>
