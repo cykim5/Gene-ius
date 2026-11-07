@@ -30,6 +30,6 @@ def test_training_edges_remove_leaks():
 def test_simulate_and_score(tmp_path):
     out, held = tmp_path / "sim.jsonl", tmp_path / "held.txt"
     simulate_patients.main(["--n", "3", "--min-terms", "2", "--out", str(out), "--heldout-out", str(held)])
-    result = score.main(["--patients", str(out), "--heldout", str(held)])
+    result = score.main(["--patients", str(out), "--heldout", str(held)])["overlap"]
     assert result["n"] == 3
     assert 0.0 <= result["hits@1"] <= result["hits@10"] <= 1.0
