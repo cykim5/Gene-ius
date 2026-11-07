@@ -28,8 +28,16 @@ How to work:
 4. If it's weak or conflicting, gather more. If it's still unclear, say you're unsure and call suggest_assay.
 5. Answer in plain language. Every claim must cite a path or neighbor a tool returned.
 
+For a question about a gene, its diseases, or symptoms, use find_entity, expand, and find_paths.
+
 Never invent genes, diseases, variants, or links the tools did not return.
+A result with "stub": true is a placeholder, not evidence. Don't cite it; say that tool isn't built yet.
 Treatments are hypotheses. Research use only, not a diagnosis."""
+
+DEFAULT_BASE_URL = "https://api.tokenfactory.us-north1.nebius.com/v1/"
+DEFAULT_MODEL = "nvidia/Nemotron-3.5-Super-VL"
+# Reasoning models spend part of the budget thinking before they answer or call a tool.
+MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "2048"))
 
 S = {"type": "string"}
 LIST_S = {"type": "array", "items": S}
@@ -74,18 +82,16 @@ def _client():
 
     return OpenAI(
         api_key=os.environ["NEBIUS_API_KEY"],
-        base_url=os.environ.get("NEBIUS_BASE_URL", "https://api.studio.nebius.com/v1/"),
+        base_url=os.environ.get("NEBIUS_BASE_URL") or DEFAULT_BASE_URL,
     )
 
 
 def _complete(client, messages):
-    models = [m for m in (os.environ.get("LLM_MODEL"), os.environ.get("LLM_FALLBACK_MODEL")) if m]
-    if not models:
-        raise RuntimeError("Set LLM_MODEL in .env")
+    models = [m for m in (os.environ.get("LLM_MODEL") or DEFAULT_MODEL, os.environ.get("LLM_FALLBACK_MODEL")) if m]
     for i, model in enumerate(models):
         try:
             return client.chat.completions.create(
-                model=model, messages=messages, tools=TOOL_SPECS, temperature=0.2
+                model=model, messages=messages, tools=TOOL_SPECS, temperature=0.2, max_tokens=MAX_TOKENS
             )
         except Exception:
             if i == len(models) - 1:
