@@ -75,6 +75,11 @@ def paralog_sequences_json() -> Path:
     return _processed("paralog_sequences.json", "GENEIUS_PARALOG_SEQUENCES")
 
 
+def processed_dir() -> Path:
+    """Teammates' processed files (predictions.json, demo cards, 1000 Genomes, viewers). Local only."""
+    return Path(os.environ.get("GENEIUS_PROCESSED_DIR") or str(REPO_ROOT / "data" / "processed")).expanduser()
+
+
 def ca_coords_pkl() -> Path:
     """AlphaFold C-alpha coordinates and pLDDT per residue, keyed by gene."""
     return _processed("alphafold_ca_coords.pkl", "GENEIUS_CA_COORDS")

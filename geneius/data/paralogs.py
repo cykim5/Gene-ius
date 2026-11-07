@@ -88,7 +88,8 @@ def load_sequences() -> dict[str, str]:
     path = config.paralog_sequences_json()
     if not path.exists():
         raise FileNotFoundError(f"No sequences at {path}. Run `python -m geneius.data.paralogs`.")
-    return {g: v["sequence"] for g, v in json.loads(path.read_text()).items()}
+    # Teammates' file maps gene -> sequence; the fetched one maps gene -> {uniprot, sequence}.
+    return {g: v["sequence"] if isinstance(v, dict) else v for g, v in json.loads(path.read_text()).items()}
 
 
 def align_map(seq_a: str, seq_b: str) -> dict[int, int]:

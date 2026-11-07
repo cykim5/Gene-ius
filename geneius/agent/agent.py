@@ -31,10 +31,17 @@ How to work:
 For a question about a gene's diseases and symptoms: expand the gene with node_type="disease", expand
 each disease with node_type="phenotype", then call find_paths with those HPO ids to confirm the links.
 
+For a patient with symptoms (HPO ids) and candidate variants: call patient_rank. Then explain the top
+variant: find_paths(hpo_ids, its gene) for symptom -> disease -> gene paths, and evidence_report(variant)
+for the evidence, paralog evidence, nearest known variants, mechanism, mouse evidence, computational
+evidence, and suggested assay. Give harmful, phenotype_match, and combined for each candidate exactly as
+patient_rank returned them, and say the harmful score is from the current model.
+
 Never invent genes, diseases, symptoms, variants, or links the tools did not return. Name only diseases
 and symptoms that appear in a tool result. Keep the final answer under 300 words.
 A result with "stub": true is a placeholder, not evidence. Don't cite it; say that tool isn't built yet.
-Treatments are hypotheses. Research use only, not a diagnosis."""
+Mention a treatment only if suggest_treatment returned it, and call it a hypothesis.
+Research use only, not a diagnosis."""
 
 DEFAULT_BASE_URL = "https://api.tokenfactory.us-north1.nebius.com/v1/"
 DEFAULT_MODEL = "nvidia/Nemotron-3.5-Super-VL"
@@ -83,8 +90,18 @@ TOOL_SPECS = [
     _spec("suggest_treatment", "Treatment strategy hypothesis from mechanism, gene, and disease.",
           {"mechanism": S, "gene": S, "disease": S}, ["mechanism"]),
     _spec("suggest_assay", "Experiment that would settle an uncertain case.", {"gene": S}, ["gene"]),
-    _spec("evidence_report", "One-page clinician-style evidence report.", {"variant": S}, ["variant"]),
+    _spec("evidence_report",
+          "Evidence for one variant ('GENE:RefPosAlt'): harmful score, confidence, computational evidence (PP3/BP4), "
+          "evidence line, paralog evidence, nearest known variants, FoldX mechanism, MGI mouse evidence, suggested assay.",
+          {"variant": S, "time_machine": {"type": "boolean", "description": "only the 2023 model and 2023 evidence"}},
+          ["variant"]),
     _spec("show_structure", "Send the variant and its neighbors to the 3D viewer.", {"variant": S}, ["variant"]),
+    _spec("patient_rank",
+          "Rank a patient's candidate variants: harmful score, fit between the patient's HPO terms and the "
+          "variant gene's diseases (best candidate = 1), and combined = sqrt(harmful x phenotype_match).",
+          {"hpo_ids": LIST_S, "variants": {**LIST_S, "description": "'GENE:RefPosAlt', e.g. RPE65:H68P"},
+           "time_machine": {"type": "boolean", "description": "use only the 2023 model"}},
+          ["hpo_ids", "variants"]),
 ]
 
 

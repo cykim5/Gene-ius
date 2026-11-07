@@ -11,11 +11,13 @@
 | evidence_by_source   | stub                            |
 | suggest_treatment    | works (rule table)              |
 | suggest_assay        | works (rule table)              |
-| evidence_report      | stub                            |
+| evidence_report      | works (predictions.json)        |
 | show_structure       | stub                            |
+| patient_rank         | works (harm x phenotype fit)    |
 """
 from .evidence import evidence_by_source, evidence_report
 from .graph_tools import expand, find_entity, find_paths
+from .patient import patient_rank
 from .predict import gnn_predict, gnn_score
 from .structure import show_structure, structural_neighbors
 from .symptoms import map_symptoms
@@ -34,6 +36,7 @@ TOOL_FUNCTIONS = {
     "suggest_assay": suggest_assay,
     "evidence_report": evidence_report,
     "show_structure": show_structure,
+    "patient_rank": patient_rank,
 }
 
 __all__ = list(TOOL_FUNCTIONS) + ["TOOL_FUNCTIONS"]

@@ -1,0 +1,7 @@
+variant_id,gene,position,ref_aa,alt_aa,class_2023,split
+13013,RHO,23,P,H,P,train
+1502009,RHO,187,C,S,VUS,unlabeled
+2356,USH2A,759,C,F,P,train
+2357,USH2A,759,C,F,VUS,test
+9001,SCN1A,101,R,Q,VUS,unlabeled
+9002,SCN1A,905,A,V,VUS,unlabeled

@@ -113,6 +113,7 @@ def test_every_tool_returns_json():
         "suggest_assay": {"gene": "RHO"},
         "evidence_report": {"variant": "RHO p.Pro23His"},
         "show_structure": {"variant": "RHO p.Pro23His"},
+        "patient_rank": {"hpo_ids": ["HP:0000510"], "variants": ["RHO:P23H"]},
     }
     assert set(args) == set(TOOL_FUNCTIONS)
     for name, kw in args.items():

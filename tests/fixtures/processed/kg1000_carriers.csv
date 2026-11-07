@@ -1,0 +1,6 @@
+gene,key,sample,gt,copies,is_child_in_trio,superpop
+RHO,chr3:129528885:G:T,S1,0|1,1,False,EUR
+RHO,chr3:129528885:G:T,S2,1|1,2,False,AFR
+RHO,chr3:129528885:G:T,S2,1|1,2,False,AFR
+RHO,chr3:129528885:G:T,S3,0|1,1,True,EUR
+USH2A,chr1:216247118:C:A,S4,0|1,1,False,SAS
