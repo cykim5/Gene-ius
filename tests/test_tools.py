@@ -11,7 +11,7 @@ from geneius.agent.tools import (
     suggest_assay,
     suggest_treatment,
 )
-from geneius.data import get_hpo, get_kg, norm_hpo
+from geneius.data import get_hpo, get_kg, load_variants, norm_hpo
 from geneius.data.clinvar import parse_protein_change, review_stars
 from geneius.graph.leakage import remove_heldout_disease_edges
 from geneius.labels import harmful_label
@@ -125,6 +125,14 @@ def test_clinvar_parsing():
     assert parse_protein_change("NM_000539.3(RHO):c.100C>T (p.Gln34Ter)") is None
     assert review_stars("reviewed by expert panel") == 3
     assert review_stars("no assertion criteria provided") == 0
+
+
+def test_load_variants_hides_test_labels(tmp_path, monkeypatch):
+    csv = tmp_path / "variants.csv"
+    csv.write_text("variant_id,gene,class_2023,class_now,stars_now,split\n1,RHO,VUS,P,2,test\n")
+    monkeypatch.setenv("GENEIUS_VARIANTS_CSV", str(csv))
+    assert list(load_variants().columns) == ["variant_id", "gene", "class_2023", "split"]
+    assert load_variants(with_test_labels=True)["class_now"].tolist() == ["P"]
 
 
 def test_harmful_label():

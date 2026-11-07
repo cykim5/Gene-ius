@@ -45,6 +45,12 @@ def clinvar_current() -> Path:
     return data_dir() / "variant_summary_current.txt.gz"
 
 
+def variants_csv() -> Path:
+    """The ClinVar 2023 vs current variant table. Committed in the repo, so it's not under data_dir()."""
+    raw = os.environ.get("GENEIUS_VARIANTS_CSV") or str(REPO_ROOT / "data" / "processed" / "variants.csv")
+    return Path(raw).expanduser()
+
+
 def alphamissense() -> Path:
     return data_dir() / "AlphaMissense_aa_substitutions.tsv.gz"
 
