@@ -32,11 +32,10 @@ def patient_rank(hpo_ids: list[str], variants: list[str], time_machine: bool = F
     hpo = get_hpo()
     terms = [hpo.primary(t) for t in hpo_ids]
     unknown = [t for t in terms if t not in hpo.names]
-    disease_scores = get_overlap_ranker().score_diseases([t for t in terms if t in hpo.names])
     preds, ft = demo.predictions(), demo.feature_table()
     field = "harmful_2023_model" if time_machine else "harmful"
 
-    rows, not_found, notes = [], [], []
+    rows, not_found, notes, genes = [], [], [], set()
     for query in variants:
         ids = demo.resolve(query)
         if not ids:
@@ -48,10 +47,16 @@ def patient_rank(hpo_ids: list[str], variants: list[str], time_machine: bool = F
         for vid in ids:
             rec = preds.get(vid, {})
             gene = ft.at[vid, "gene"]
-            raw, disease = _gene_fit(gene, disease_scores)
+            genes.add(gene)
             rows.append({"query": query, "variant": ft.at[vid, "variant_id"], "variation_id": vid, "gene": gene,
-                         "clinvar_change": demo.clinvar_changes().get(vid), "harmful": rec.get(field),
-                         "phenotype_raw": round(raw, 4), "best_matching_disease": disease})
+                         "clinvar_change": demo.clinvar_changes().get(vid), "harmful": rec.get(field)})
+
+    diseases = set().union(*(get_kg().gene_diseases.get(g, ()) for g in genes))
+    disease_scores = get_overlap_ranker().score_diseases([t for t in terms if t in hpo.names], diseases=diseases)
+    for r in rows:
+        raw, disease = _gene_fit(r["gene"], disease_scores)
+        r["phenotype_raw"] = round(raw, 4)
+        r["best_matching_disease"] = disease
 
     top = max((r["phenotype_raw"] for r in rows), default=0.0)
     for r in rows:
