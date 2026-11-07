@@ -215,13 +215,23 @@ def predict(variant_ids: list[str]) -> list[dict]:
     return out
 
 
-def main() -> None:
+def no_alphamissense_dir() -> Path:
+    return config.gnn_a_dir().with_name("gnn_a_no_alphamissense")
+
+
+def main(argv=None) -> None:
+    import argparse
+
     from ..data import load_variants
     from ..graph.build import build_graph
 
+    ap = argparse.ArgumentParser(description="Train GNN output A")
+    ap.add_argument("--no-alphamissense", action="store_true", help="drop AlphaMissense from the variant features")
+    args = ap.parse_args(argv)
     variants = load_variants()
-    graph = build_graph(variants)
-    train(graph, variants["gene"].tolist())
+    drop = ("alphamissense",) if args.no_alphamissense else ()
+    graph = build_graph(variants, drop_features=drop)
+    train(graph, variants["gene"].tolist(), out_dir=no_alphamissense_dir() if args.no_alphamissense else None)
 
 
 if __name__ == "__main__":

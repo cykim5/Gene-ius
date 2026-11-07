@@ -9,7 +9,14 @@ import torch  # noqa: E402
 
 from geneius.agent.tools import gnn_predict  # noqa: E402
 from geneius.agent.tools import predict as predict_tool  # noqa: E402
-from geneius.features.variant_features import AA, BLOSUM62, PLACEHOLDER_COLUMNS, model_columns, variant_features  # noqa: E402
+from geneius.features.variant_features import (  # noqa: E402
+    AA,
+    BLOSUM62,
+    PLACEHOLDER_COLUMNS,
+    all_variant_features,
+    model_columns,
+    variant_features,
+)
 from geneius.graph.build import USED_COLUMNS, VARIANT_DISEASE, VARIANT_GENE, build_graph  # noqa: E402
 from geneius.models import gnn  # noqa: E402
 
@@ -52,6 +59,29 @@ def test_variant_features():
     assert f.loc[6, "to_proline"] == 1.0 and f.loc[0, "from_proline"] == 1.0
     assert f[PLACEHOLDER_COLUMNS].isna().all().all()
     assert not set(PLACEHOLDER_COLUMNS) & set(model_columns(f))
+
+
+def test_feature_table_fills_placeholders_and_ignores_post_2023_columns(tmp_path, monkeypatch):
+    table = pd.DataFrame({
+        "variation_id": [1, 9], "variant_id": ["RHO:P23H", "RHO:Q28R"], "split": ["train", "test"],
+        "cls_2023": ["P", "VUS"], "cls_now": ["P", "P"], "stars_now": [3, 2], "diseases_now": ["x", "y"],
+        "am_score": [0.9, np.nan], "plddt": [91.0, 80.0], "in_domain": [1, 0], "transmembrane": [1, 1],
+        "active_site": [0, 0], "binding_site": [0, 1], "disulfide_cys": [0, 0], "topo_extracellular": [1, 0],
+        "topo_cytoplasmic": [0, 1], "topo_other": [0, 0], "dist_to_site": [4.2, 30.0],
+    })
+    path = tmp_path / "feature_table.csv"
+    table.to_csv(path, index=False)
+    monkeypatch.setenv("GENEIUS_FEATURE_TABLE", str(path))
+    f = all_variant_features(variants())
+    assert f.loc[0, "alphamissense"] == 0.9 and f.loc[0, "plddt"] == 91.0 and f.loc[0, "dist_to_site"] == 4.2
+    assert np.isnan(f.loc[8, "alphamissense"]) and f.loc[8, "in_binding_site"] == 1.0
+    assert np.isnan(f.loc[1, "plddt"])  # variant 2 isn't in the table
+    assert f.loc[0, "blosum62"] == BLOSUM62[("P", "H")]  # computed features kept
+    assert not [c for c in f.columns if c.endswith("_now") or c in ("split", "cls_2023", "cls_now")]
+    g = build_graph(variants(), cache=False, verbose=False)
+    assert "alphamissense" in g.feature_columns and "in_modified_residue" not in g.feature_columns
+    assert "alphamissense" not in build_graph(variants(), cache=False, verbose=False,
+                                              drop_features=("alphamissense",)).feature_columns
 
 
 def test_graph_reads_no_post_2023_columns():

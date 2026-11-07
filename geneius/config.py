@@ -51,6 +51,18 @@ def variants_csv() -> Path:
     return Path(raw).expanduser()
 
 
+def feature_table_csv() -> Path:
+    """Teammates' variant feature table (AlphaMissense, pLDDT, UniProt regions). Local only, not tracked."""
+    raw = os.environ.get("GENEIUS_FEATURE_TABLE") or str(REPO_ROOT / "data" / "processed" / "feature_table.csv")
+    return Path(raw).expanduser()
+
+
+def baseline_predictions_csv() -> Path:
+    """Teammates' predictions.csv. Its harmful_2023_model column is a 2023-trained baseline."""
+    raw = os.environ.get("GENEIUS_BASELINE_PREDICTIONS") or str(REPO_ROOT / "data" / "processed" / "predictions.csv")
+    return Path(raw).expanduser()
+
+
 def gnn_a_dir() -> Path:
     """Output A checkpoint and predictions.csv. Reading predictions needs no torch import."""
     raw = os.environ.get("GENEIUS_GNN_A_DIR") or str(data_dir() / "gnn_a")

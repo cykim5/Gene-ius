@@ -33,7 +33,7 @@ from torch_geometric.data import HeteroData
 from .. import config
 from ..data import get_hpo, norm_hpo
 from ..data.kg import _edges
-from ..features.variant_features import model_columns, variant_features
+from ..features.variant_features import all_variant_features, model_columns
 from .leakage import remove_heldout_disease_edges
 
 USED_COLUMNS = ["variant_id", "gene", "ref_aa", "alt_aa", "class_2023", "split", "pheno_ids_2023", "disease_2023"]
@@ -49,7 +49,7 @@ KG_RELATIONS = {
 VARIANT_GENE = ("variant", "in_gene", "gene")
 VARIANT_DISEASE = ("variant", "linked_to", "disease")
 NODE_TYPES = ("gene", "disease", "phenotype", "variant")
-CACHE_VERSION = "a1"
+CACHE_VERSION = "a2"
 
 _MONDO = re.compile(r"MONDO:MONDO:(\d+)")
 
@@ -106,16 +106,23 @@ def match_diseases(row: pd.Series, by_mondo: dict[int, str], by_name: dict[str, 
     return hits, ("name" if hits else "none")
 
 
-def _cache_key(variants: pd.DataFrame, heldout: set[str]) -> str:
+def _cache_key(variants: pd.DataFrame, heldout: set[str], drop_features: tuple[str, ...]) -> str:
     h = hashlib.sha1(CACHE_VERSION.encode())
     h.update(pd.util.hash_pandas_object(variants, index=False).values.tobytes())
     h.update("|".join(sorted(heldout)).encode())
+    h.update("|".join(sorted(drop_features)).encode())
     h.update(str(config.primekg_csv().stat().st_size).encode())
+    table = config.feature_table_csv()
+    if table.exists():
+        h.update(f"{table.stat().st_size}:{table.stat().st_mtime_ns}".encode())
     return h.hexdigest()[:16]
 
 
 def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str] | frozenset = frozenset(),
-                cache: bool = True, verbose: bool = True) -> VariantGraph:
+                cache: bool = True, verbose: bool = True, drop_features: tuple[str, ...] = (),
+                feature_table: pd.DataFrame | None = None) -> VariantGraph:
+    """drop_features removes variant features, e.g. ("alphamissense",) for the run without AlphaMissense.
+    feature_table overrides feature_table.csv (tests)."""
     if variants is None:
         from ..data import load_variants
 
@@ -123,7 +130,7 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
     variants = variants[USED_COLUMNS].reset_index(drop=True)
     heldout = set(heldout_diseases)
 
-    cache_path = config.data_dir() / "cache" / f"variant_graph_{_cache_key(variants, heldout)}.pt"
+    cache_path = config.data_dir() / "cache" / f"variant_graph_{_cache_key(variants, heldout, drop_features)}.pt"
     if cache and cache_path.exists():
         graph = torch.load(cache_path, weights_only=False)
         if verbose:
@@ -165,8 +172,8 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
     put(VARIANT_GENE, list(zip(index["variant"], variants["gene"])))
     put(VARIANT_DISEASE, variant_disease)
 
-    feats = variant_features(variants)
-    cols = model_columns(feats)
+    feats = all_variant_features(variants, feature_table)
+    cols = [c for c in model_columns(feats) if c not in drop_features]
     x = feats[cols].to_numpy(dtype=np.float32)
     mean = np.nanmean(x[is_train], axis=0) if is_train.any() else np.zeros(len(cols), dtype=np.float32)
     std = np.nanstd(x[is_train], axis=0) if is_train.any() else np.ones(len(cols), dtype=np.float32)

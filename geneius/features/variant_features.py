@@ -56,7 +56,16 @@ PLACEHOLDER_COLUMNS = [
     "alphamissense", "plddt", "in_domain", "in_transmembrane", "in_active_site", "in_binding_site",
     "in_disulfide", "in_modified_residue",
 ]
-FEATURE_COLUMNS = CHANGE_COLUMNS + PLACEHOLDER_COLUMNS
+TABLE_EXTRA_COLUMNS = ["topo_extracellular", "topo_cytoplasmic", "topo_other", "dist_to_site"]
+FEATURE_COLUMNS = CHANGE_COLUMNS + PLACEHOLDER_COLUMNS + TABLE_EXTRA_COLUMNS
+# feature_table.csv column -> our column. Only these are read: the table also carries split, cls_now,
+# stars_now, diseases_now, and disease_groups_now (post-2023) and cls_2023 (the label).
+FEATURE_TABLE_COLUMNS = {
+    "am_score": "alphamissense", "plddt": "plddt", "in_domain": "in_domain", "transmembrane": "in_transmembrane",
+    "active_site": "in_active_site", "binding_site": "in_binding_site", "disulfide_cys": "in_disulfide",
+    **{c: c for c in TABLE_EXTRA_COLUMNS},
+}
+NO_ALPHAMISSENSE = [c for c in FEATURE_COLUMNS if c != "alphamissense"]
 
 
 def variant_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -73,8 +82,33 @@ def variant_features(df: pd.DataFrame) -> pd.DataFrame:
     out["to_glycine"] = (alt == "G").astype(float)
     out["from_glycine"] = (ref == "G").astype(float)
     out.loc[~known, CHANGE_COLUMNS] = np.nan
-    for col in PLACEHOLDER_COLUMNS:
+    for col in PLACEHOLDER_COLUMNS + TABLE_EXTRA_COLUMNS:
         out[col] = np.nan
+    return out
+
+
+def load_feature_table() -> pd.DataFrame | None:
+    """Teammates' structure and AlphaMissense features keyed by ClinVar variation id, allowlisted columns only."""
+    from .. import config
+
+    path = config.feature_table_csv()
+    if not path.exists():
+        return None
+    table = pd.read_csv(path, usecols=["variation_id", *FEATURE_TABLE_COLUMNS], low_memory=False)
+    table["variation_id"] = table["variation_id"].astype(str)
+    return table.rename(columns=FEATURE_TABLE_COLUMNS).drop_duplicates("variation_id").set_index("variation_id")
+
+
+def all_variant_features(df: pd.DataFrame, table: pd.DataFrame | None = None) -> pd.DataFrame:
+    """variant_features(df), with feature_table.csv values filled in where it has them (joined on variant_id)."""
+    out = variant_features(df)
+    table = load_feature_table() if table is None else table
+    if table is None:
+        return out
+    joined = table.reindex(df["variant_id"].astype(str).to_numpy())
+    for col in joined.columns:
+        values = joined[col].to_numpy(dtype=float)
+        out[col] = np.where(np.isnan(values), out[col].to_numpy(dtype=float), values)
     return out
 
 
