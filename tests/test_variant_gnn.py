@@ -19,7 +19,13 @@ from geneius.features.variant_features import (  # noqa: E402
     variant_features,
 )
 from geneius.data.paralogs import align_map  # noqa: E402
-from geneius.features.graph_features import paralog_features, paralog_links, residue_positions  # noqa: E402
+from geneius.features.graph_features import (  # noqa: E402
+    paralog_features,
+    paralog_links,
+    residue_positions,
+    structure_features,
+    structure_pairs,
+)
 from geneius.graph.build import USED_COLUMNS, VARIANT_DISEASE, VARIANT_GENE, build_graph  # noqa: E402
 from geneius.models import gnn  # noqa: E402
 
@@ -104,6 +110,60 @@ def test_align_map_and_paralog_links():
     assert got == [(0, 0, "same"), (0, 1, "near"), (0, 2, "near"), (1, 0, "near"), (1, 1, "same")]
     f = paralog_features(3, links)
     assert f["paralog_p_same"].tolist() == [1.0, 1.0, 0.0] and f["paralog_p_near"].tolist() == [2.0, 1.0, 0.0]
+
+
+def test_structure_pairs_and_label_counts():
+    # Residues 1-3 within 10 A of each other; residue 4 is close but low confidence; residue 5 is far.
+    coords = {"RHO": {1: (0, 0, 0, 90), 2: (3, 0, 0, 90), 3: (6, 0, 0, 80), 4: (1, 1, 0, 50), 5: (40, 0, 0, 95)}}
+    v = pd.DataFrame({"gene": ["RHO"] * 6})
+    residues = np.array([1, 2, 3, 4, 5, 1])  # variant 5 sits on residue 1 too
+    pairs = structure_pairs(v, residues, coords)
+    got = {(int(a), int(b)) for a, b in zip(pairs["a"], pairs["b"])}
+    assert got == {(a, b) for a in (0, 1, 2, 5) for b in (0, 1, 2, 5) if a != b}
+    assert pairs.loc[(pairs["a"] == 0) & (pairs["b"] == 2), "distance"].item() == pytest.approx(6.0)
+    # Labels: variant 1 pathogenic training, variant 2 benign training, variant 5 held out (NaN).
+    f = structure_features(6, pairs, np.array([np.nan, 1.0, 0.0, np.nan, np.nan, np.nan]))
+    assert f.loc[0, "struct_p_10a"] == 1 and f.loc[0, "struct_b_10a"] == 1 and f.loc[0, "struct_p_frac_10a"] == 0.5
+    assert f.loc[1, "struct_p_10a"] == 0  # never counts itself
+    assert f.loc[3, "struct_p_10a"] == 0 and np.isnan(f.loc[3, "struct_p_frac_10a"])  # low pLDDT: no edges
+
+
+def test_holdout_gene_loses_labels_and_disease_edges():
+    df = variants()
+    g = build_graph(df, cache=False, verbose=False, holdout_genes=("RHO",))
+    rho_train = ((df["gene"] == "RHO") & (df["split"] == "train")).to_numpy()
+    assert not g.data["variant"].train_mask[torch.tensor(rho_train)].any()
+    assert torch.isnan(g.data["variant"].y[torch.tensor(rho_train)]).all()
+    linked = set(g.data[VARIANT_DISEASE].edge_index[0].tolist())
+    assert not linked & set(np.flatnonzero(rho_train))
+    assert sorted(g.data[VARIANT_GENE].edge_index[0].tolist()) == list(range(len(df)))  # still in the graph
+
+
+def test_graph_with_3d_edges(tmp_path, monkeypatch):
+    import json
+    import pickle
+
+    seq = "M" * 300
+    (tmp_path / "seqs.json").write_text(json.dumps({g: {"uniprot": "X", "sequence": seq}
+                                                     for g in ("RHO", "USH2A", "SCN1A", "UBE3A")}))
+    coords = {"RHO": {23: (0, 0, 0, 90), 90: (5, 0, 0, 90), 28: (2, 0, 0, 90)}}
+    with open(tmp_path / "ca.pkl", "wb") as f:
+        pickle.dump(coords, f)
+    monkeypatch.setenv("GENEIUS_PARALOG_SEQUENCES", str(tmp_path / "seqs.json"))
+    monkeypatch.setenv("GENEIUS_CA_COORDS", str(tmp_path / "ca.pkl"))
+    from geneius.data.paralogs import load_sequences
+
+    load_sequences.cache_clear()
+    df = variants()
+    df["ref_aa"] = "M"
+    df["uniprot_ref"] = "M"
+    g = build_graph(df, cache=False, verbose=False, structure=True)
+    load_sequences.cache_clear()
+    ei = g.data[("variant", "near_3d", "variant")].edge_index
+    assert {(int(a), int(b)) for a, b in ei.T} == {(a, b) for a in (0, 1, 8) for b in (0, 1, 8) if a != b}
+    attr = g.data[("variant", "near_3d", "variant")].edge_attr
+    assert attr.shape == (6, 1) and float(attr.max()) == pytest.approx(5.0)  # not doubled by ToUndirected
+    assert {"struct_p_10a", "struct_b_10a", "struct_p_frac_10a"} <= set(g.feature_columns)
 
 
 def test_model_matrix_uses_train_medians_and_optional_am_indicator():

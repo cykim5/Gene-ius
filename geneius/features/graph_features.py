@@ -100,6 +100,31 @@ def structure_pairs(variants: pd.DataFrame, residues: np.ndarray, coords: dict) 
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=["a", "b", "distance"])
 
 
+def extra_links(variants: pd.DataFrame, is_train: np.ndarray, paralog: bool, structure: bool) -> dict:
+    """Paralog and 3D links plus their count features. Label-based counts use only is_train rows.
+
+    variants needs gene, position, ref_aa, uniprot_pos, uniprot_ref, and class_2023.
+    """
+    if not (paralog or structure):
+        return {}
+    from ..data.paralogs import family_maps, load_paralog_variants, load_sequences
+
+    residues = residue_positions(variants, load_sequences())
+    out: dict = {"features": pd.DataFrame(index=range(len(variants)))}
+    if paralog:
+        pv = load_paralog_variants()
+        links = paralog_links(variants, residues, pv, family_maps())
+        out.update(paralog_variants=pv, paralog_links=links)
+        out["features"] = pd.concat([out["features"], paralog_features(len(variants), links)], axis=1)
+    if structure:
+        pairs = structure_pairs(variants, residues, load_ca_coords())
+        label = variants["class_2023"].map({"P": 1.0, "B": 0.0}).to_numpy(dtype=float, na_value=np.nan)
+        out["structure_pairs"] = pairs
+        out["features"] = pd.concat(
+            [out["features"], structure_features(len(variants), pairs, np.where(is_train, label, np.nan))], axis=1)
+    return out
+
+
 def structure_features(n_variants: int, pairs: pd.DataFrame, train_label: np.ndarray) -> pd.DataFrame:
     """Counts of pathogenic and benign training neighbors within 10 A. train_label: 1, 0, or NaN (not training)."""
     out = pd.DataFrame(0.0, index=range(n_variants), columns=STRUCTURE_FEATURES)

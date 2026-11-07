@@ -33,14 +33,7 @@ from torch_geometric.data import HeteroData
 from .. import config
 from ..data import get_hpo, norm_hpo
 from ..data.kg import _edges
-from ..features.graph_features import (
-    load_ca_coords,
-    paralog_features,
-    paralog_links,
-    residue_positions,
-    structure_features,
-    structure_pairs,
-)
+from ..features.graph_features import extra_links
 from ..features.variant_features import CHANGE_COLUMNS, all_variant_features, model_columns, model_matrix, variant_features
 from .leakage import remove_heldout_disease_edges
 
@@ -119,28 +112,6 @@ def match_diseases(row: pd.Series, by_mondo: dict[int, str], by_name: dict[str, 
     return hits, ("name" if hits else "none")
 
 
-def _extra_links(variants: pd.DataFrame, is_train: np.ndarray, paralog: bool, structure: bool) -> dict:
-    """Paralog and 3D links plus their count features. Label-based counts use only is_train rows."""
-    if not (paralog or structure):
-        return {}
-    from ..data.paralogs import family_maps, load_paralog_variants, load_sequences
-
-    residues = residue_positions(variants, load_sequences())
-    out: dict = {"features": pd.DataFrame(index=range(len(variants)))}
-    if paralog:
-        pv = load_paralog_variants()
-        links = paralog_links(variants, residues, pv, family_maps())
-        out.update(paralog_variants=pv, paralog_links=links)
-        out["features"] = pd.concat([out["features"], paralog_features(len(variants), links)], axis=1)
-    if structure:
-        pairs = structure_pairs(variants, residues, load_ca_coords())
-        label = variants["class_2023"].map(LABELS_2023).to_numpy(dtype=float, na_value=np.nan)
-        train_label = np.where(is_train, label, np.nan)
-        out["structure_pairs"] = pairs
-        out["features"] = pd.concat([out["features"], structure_features(len(variants), pairs, train_label)], axis=1)
-    return out
-
-
 def _cache_key(variants: pd.DataFrame, heldout: set[str], options: dict) -> str:
     h = hashlib.sha1(CACHE_VERSION.encode())
     h.update(pd.util.hash_pandas_object(variants, index=False).values.tobytes())
@@ -194,7 +165,7 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
         keys[s].update(e.src)
         keys[d].update(e.dst)
     keys["gene"].update(variants["gene"])
-    extra = _extra_links(variants, is_train, paralog, structure)
+    extra = extra_links(variants, is_train, paralog, structure)
     if paralog:
         keys["gene"].update(extra["paralog_variants"]["gene"])
     index = {t: sorted(k) for t, k in keys.items() if t != "variant"}
