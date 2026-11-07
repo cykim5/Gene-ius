@@ -42,23 +42,19 @@ Everyone builds against these. All return JSON. HPO IDs look like `HP:0001250`, 
 | `get_mechanism(disease)` | `{disease, mechanism_summary, key_phenotypes, source}` | Stub. DisMech to do. |
 | `suggest_followup(candidates, known_hpo_ids)` | `{question, hpo_id, distinguishes}` | Works |
 
-## Repo layout
+## Who works where
 
-```
-geneius/
-  tools/             the five agent tools
-  baseline_overlap.py  phenotype overlap ranker (first baseline)
-  data.py            PrimeKG and HPO loaders
-  pipeline.py        fixed pipeline, no LLM
-  agent.py           LLM agent loop
-  gnn/               GNN training and inference
-eval/
-  simulate_patients.py
-  score.py           hits@1, hits@5, hits@10
-  data/              real case reports go here
-scripts/download_data.sh
-tests/               runs on a tiny fixture graph, no download needed
-```
+| Folder | What's in it | Owner |
+|---|---|---|
+| `geneius/agent.py`, `geneius/tools/` | agent loop and the five tools | Sri |
+| `geneius/gnn/` | GNN training and inference | Sri |
+| `geneius/data.py`, `geneius/baseline_overlap.py` | data loaders, overlap baseline | Comp bio |
+| `eval/` | simulated patients, scoring, real case data | Comp bio, PhD 1 |
+| `geneius/tools/mechanism.py`, `followup.py` | mechanism lookup, follow-up logic | PhD 2 |
+| `app/` | demo UI | Sri |
+| `docs/` | pitch, case notes, judge questions | Pitch, PhDs |
+| `notebooks/` | scratch work, prefix files with your name | everyone |
+| `tests/` | runs on a tiny fixture graph, no download needed | everyone |
 
 ## Evaluation
 
@@ -79,18 +75,25 @@ Baselines: phenotype overlap, LLM only, GNN only, full agent.
 - HPO derives most gene-phenotype links from disease annotations. `gnn/graph_build.py` drops these for held-out diseases. Keep that in mind when adding new edge types.
 - This is decision support, not a diagnosis.
 
-## Team
+## How we work
 
-- Sri: agent loop, GNN, tools, demo app
-- Comp bio: data loading, simulated patients, scoring
-- PhD 1: real case reports, sanity checks on rankings
-- PhD 2: mechanism lookup, follow-up logic, judge questions
-- Pitch: problem story, slides, demo script
+Pull before you start, work on your own branch, and open a pull request when it works.
 
-## Development
+```bash
+git pull origin main
+git checkout -b yourname/what-you-are-doing
+```
 
 ```bash
 python -m pytest -q
+git add <your files>
+git commit -m "Short description"
+git push -u origin yourname/what-you-are-doing
 ```
 
-Work on your own branch and open a pull request. Never commit `.env` or anything in `data/`.
+Rules:
+
+- Don't change a tool's inputs or outputs without telling the team. Everyone builds against them.
+- Run the tests before you push.
+- Never commit `.env`, API keys, or anything in `data/`.
+- Feature freeze Saturday 11pm. After that, fixes only.
