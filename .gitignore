@@ -4,7 +4,7 @@
 !.env.example
 
 # Data (large, re-downloadable with scripts/download_data.sh)
-data/
+/data/
 *.csv.part
 
 # Eval outputs (regenerable)
