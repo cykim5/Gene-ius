@@ -2,9 +2,10 @@
 
 No torch here, so eval/reclassification.py can use it next to xgboost.
 
-Residue positions: canonical UniProt numbering. uniprot_pos is used when the sequence has
-uniprot_ref there; otherwise position when the sequence has ref_aa there; otherwise the variant
-has no residue and gets no paralog or 3D links.
+Residue positions: canonical UniProt numbering from feature_table.csv `pos`, matched on
+variation_id, skipping rows numbered "unmappable" (canonical_residues). Without a feature table,
+uniprot_pos is used when the sequence has uniprot_ref there, otherwise position when the sequence
+has ref_aa there (residue_positions). A variant with no residue gets no paralog or 3D links.
 
 Paralog links: a panel variant at residue r links to 2023 pathogenic paralog variants at the
 aligned paralog residue ("same") or one residue either side of it ("near").
@@ -41,6 +42,25 @@ def residue_positions(variants: pd.DataFrame, sequences: dict[str, str]) -> np.n
             out[i] = int(up)
         elif pd.notna(pos) and 0 < int(pos) <= len(seq) and seq[int(pos) - 1] == ref:
             out[i] = int(pos)
+    return out
+
+
+def canonical_residues(variants: pd.DataFrame, sequences: dict[str, str]) -> np.ndarray | None:
+    """Canonical residues from feature_table.csv `pos` (teammates re-mapped 822 variants, mostly CACNA1C),
+    matched on variation_id. Rows numbered "unmappable", or whose residue doesn't match the sequence, get 0.
+    None when there's no feature table."""
+    path = config.feature_table_csv()
+    if not path.exists():
+        return None
+    ft = pd.read_csv(path, usecols=["variation_id", "pos", "ref", "numbering"], low_memory=False)
+    ft = ft.drop_duplicates("variation_id").set_index(ft["variation_id"].astype(str))
+    out = np.zeros(len(variants), dtype=int)
+    for i, (vid, gene) in enumerate(zip(variants["variant_id"].astype(str), variants["gene"])):
+        if vid not in ft.index or ft.at[vid, "numbering"] == "unmappable" or pd.isna(ft.at[vid, "pos"]):
+            continue
+        pos, seq = int(ft.at[vid, "pos"]), sequences.get(gene, "")
+        if 0 < pos <= len(seq) and seq[pos - 1] == ft.at[vid, "ref"]:
+            out[i] = pos
     return out
 
 
@@ -103,14 +123,18 @@ def structure_pairs(variants: pd.DataFrame, residues: np.ndarray, coords: dict) 
 def extra_links(variants: pd.DataFrame, is_train: np.ndarray, paralog: bool, structure: bool) -> dict:
     """Paralog and 3D links plus their count features. Label-based counts use only is_train rows.
 
-    variants needs gene, position, ref_aa, uniprot_pos, uniprot_ref, and class_2023.
+    variants needs variant_id, gene, position, ref_aa, uniprot_pos, uniprot_ref, and class_2023. Residues come
+    from feature_table.csv canonical pos when it exists (see canonical_residues).
     """
     if not (paralog or structure):
         return {}
     from ..data.paralogs import family_maps, load_paralog_variants, load_sequences
 
-    residues = residue_positions(variants, load_sequences())
-    out: dict = {"features": pd.DataFrame(index=range(len(variants)))}
+    sequences = load_sequences()
+    residues = canonical_residues(variants, sequences)
+    if residues is None:
+        residues = residue_positions(variants, sequences)
+    out: dict = {"features": pd.DataFrame(index=range(len(variants))), "residues": residues}
     if paralog:
         pv = load_paralog_variants()
         links = paralog_links(variants, residues, pv, family_maps())

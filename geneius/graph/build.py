@@ -55,7 +55,7 @@ PARALOG_NEAR = ("variant", "paralog_near", "paralog_variant")
 PARALOG_GENE = ("paralog_variant", "in_gene", "gene")
 NEAR_3D = ("variant", "near_3d", "variant")
 NODE_TYPES = ("gene", "disease", "phenotype", "variant")
-CACHE_VERSION = "a4"
+CACHE_VERSION = "a5"
 
 _MONDO = re.compile(r"MONDO:MONDO:(\d+)")
 

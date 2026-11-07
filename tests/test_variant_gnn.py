@@ -20,6 +20,7 @@ from geneius.features.variant_features import (  # noqa: E402
 )
 from geneius.data.paralogs import align_map  # noqa: E402
 from geneius.features.graph_features import (  # noqa: E402
+    canonical_residues,
     paralog_features,
     paralog_links,
     residue_positions,
@@ -110,6 +111,19 @@ def test_align_map_and_paralog_links():
     assert got == [(0, 0, "same"), (0, 1, "near"), (0, 2, "near"), (1, 0, "near"), (1, 1, "same")]
     f = paralog_features(3, links)
     assert f["paralog_p_same"].tolist() == [1.0, 1.0, 0.0] and f["paralog_p_near"].tolist() == [2.0, 1.0, 0.0]
+
+
+def test_canonical_residues_from_feature_table(tmp_path, monkeypatch):
+    table = pd.DataFrame({"variation_id": [1, 2, 3, 4], "pos": [5, 7, 2, 6], "ref": ["Y", "A", "K", "Q"],
+                          "numbering": ["uniprot_canonical", "mapped_via_transcript", "unmappable", "uniprot_canonical"]})
+    path = tmp_path / "feature_table.csv"
+    table.to_csv(path, index=False)
+    monkeypatch.setenv("GENEIUS_FEATURE_TABLE", str(path))
+    v = pd.DataFrame({"variant_id": [1, 2, 3, 4, 5], "gene": ["RHO"] * 5})
+    # 2 is re-mapped and used; 3 is unmappable; 4's ref doesn't match the sequence; 5 isn't in the table.
+    assert canonical_residues(v, {"RHO": "MKTAYIAK"}).tolist() == [5, 7, 0, 0, 0]
+    monkeypatch.setenv("GENEIUS_FEATURE_TABLE", str(tmp_path / "missing.csv"))
+    assert canonical_residues(v, {"RHO": "MKTAYIAK"}) is None
 
 
 def test_structure_pairs_and_label_counts():
