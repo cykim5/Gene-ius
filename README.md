@@ -37,7 +37,7 @@ Everyone builds against these. All return JSON. HPO IDs look like `HP:0001250`, 
 | Tool | Returns | Status |
 |---|---|
 | `map_to_hpo(text)` | `[{hpo_id, label, matched_text}]` | Dictionary matcher works. Embedding matcher to do. |
-| `rank_candidates(hpo_ids, top_k=10)` | `[{gene, disease, score}]` | Overlap baseline works. GNN to do. |
+| `rank_candidates(hpo_ids, top_k=10)` | `[{gene, disease, score}]` | Overlap baseline, GNN, and hybrid work. Pick with `GENEIUS_RANKER`. |
 | `get_evidence_paths(hpo_ids, gene, max_paths=5)` | `[{path: [{node_id, node_type, name}], relations}]` | Works |
 | `get_mechanism(disease)` | `{disease, mechanism_summary, key_phenotypes, source}` | Stub. DisMech to do. |
 | `suggest_followup(candidates, known_hpo_ids)` | `{question, hpo_id, distinguishes}` | Works |
@@ -60,10 +60,17 @@ Everyone builds against these. All return JSON. HPO IDs look like `HP:0001250`, 
 
 ```bash
 python eval/simulate_patients.py --n 200
-python eval/score.py --method overlap
+python -m geneius.gnn.train          # ~6 min on an M3 CPU, writes $GENEIUS_DATA_DIR/gnn/
+python eval/score.py --method all    # overlap, gnn, hybrid
 ```
 
-Simulated patients keep 60% of a disease's HPO terms and add 2 noise terms. Their diseases are held out: phenotype edges are removed from the GNN's training graph, and hidden from the overlap baseline too, so the comparison is fair.
+Simulated patients keep 60% of a disease's HPO terms and add 2 noise terms. Their diseases are held out: phenotype edges are removed from the GNN's training graph, and hidden from the overlap baseline too, so the comparison is fair. `score.py` refuses to score the GNN in heldout mode if it was trained without those diseases held out.
+
+Rankers (`GENEIUS_RANKER`):
+
+- `overlap`: phenotype overlap with information content. No training.
+- `gnn`: 2-layer GraphSAGE with PairNorm over gene, disease, and phenotype nodes, trained to predict disease-phenotype links. Diseases have no ID embedding, so a held-out disease is described by its genes and neighboring diseases. On simulated patients it is well below overlap (hits@10 0.03 vs 0.135 held out), so keep `overlap` for the demo.
+- `hybrid`: reciprocal rank fusion (k=60) of the two. No better than overlap alone.
 
 Real cases go in `eval/data/real_cases.jsonl`, one per line, following `real_cases.template.jsonl`. Score them with `--mode transductive`.
 
