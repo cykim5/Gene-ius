@@ -15,6 +15,7 @@ from geneius.features.variant_features import (  # noqa: E402
     PLACEHOLDER_COLUMNS,
     all_variant_features,
     model_columns,
+    model_matrix,
     variant_features,
 )
 from geneius.graph.build import USED_COLUMNS, VARIANT_DISEASE, VARIANT_GENE, build_graph  # noqa: E402
@@ -82,6 +83,16 @@ def test_feature_table_fills_placeholders_and_ignores_post_2023_columns(tmp_path
     assert "alphamissense" in g.feature_columns and "in_modified_residue" not in g.feature_columns
     assert "alphamissense" not in build_graph(variants(), cache=False, verbose=False,
                                               drop_features=("alphamissense",)).feature_columns
+
+
+def test_model_matrix_uses_train_medians_and_optional_am_indicator():
+    feats = pd.DataFrame({"alphamissense": [0.2, np.nan, 0.8, 0.0], "plddt": [50.0, 70.0, np.nan, 99.0]})
+    is_train = np.array([True, True, True, False])
+    a = model_matrix(feats, ["alphamissense", "plddt"], is_train, am_indicator=True)
+    assert a["alphamissense"].tolist() == [0.2, 0.5, 0.8, 0.0]  # train median of 0.2 and 0.8
+    assert a["plddt"].tolist() == [50.0, 70.0, 60.0, 99.0]
+    assert a["am_missing"].tolist() == [0.0, 1.0, 0.0, 0.0]
+    assert "am_missing" not in model_matrix(feats, ["alphamissense", "plddt"], is_train, am_indicator=False)
 
 
 def test_graph_reads_no_post_2023_columns():

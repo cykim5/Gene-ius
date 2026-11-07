@@ -115,3 +115,18 @@ def all_variant_features(df: pd.DataFrame, table: pd.DataFrame | None = None) ->
 def model_columns(features: pd.DataFrame) -> list[str]:
     """Feature columns that have at least one value."""
     return [c for c in FEATURE_COLUMNS if c in features and features[c].notna().any()]
+
+
+def model_matrix(features: pd.DataFrame, cols: list[str], is_train: np.ndarray,
+                 am_indicator: bool = True) -> pd.DataFrame:
+    """The matrix both the GNN and XGBoost see, so neither gets information the other lacks.
+
+    Missing values are filled with the train median. With am_indicator, an am_missing column (1 when
+    AlphaMissense has no score) is added. Without it, neither model can tell a missing score from
+    a median one.
+    """
+    mat = features[cols].astype(float).copy()
+    medians = mat[is_train].median() if is_train.any() else mat.median()
+    if am_indicator and "alphamissense" in cols:
+        mat["am_missing"] = features["alphamissense"].isna().astype(float)
+    return mat.fillna(medians).fillna(0.0)

@@ -227,11 +227,15 @@ def main(argv=None) -> None:
 
     ap = argparse.ArgumentParser(description="Train GNN output A")
     ap.add_argument("--no-alphamissense", action="store_true", help="drop AlphaMissense from the variant features")
+    ap.add_argument("--am-impute", action="store_true",
+                    help="no am_missing indicator: missing AlphaMissense is just the train median")
+    ap.add_argument("--out", type=Path, default=None, help="output folder (default: config.gnn_a_dir())")
     args = ap.parse_args(argv)
     variants = load_variants()
     drop = ("alphamissense",) if args.no_alphamissense else ()
-    graph = build_graph(variants, drop_features=drop)
-    train(graph, variants["gene"].tolist(), out_dir=no_alphamissense_dir() if args.no_alphamissense else None)
+    graph = build_graph(variants, drop_features=drop, am_indicator=not args.am_impute)
+    out = args.out or (no_alphamissense_dir() if args.no_alphamissense else None)
+    train(graph, variants["gene"].tolist(), out_dir=out)
 
 
 if __name__ == "__main__":

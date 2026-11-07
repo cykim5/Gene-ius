@@ -33,7 +33,7 @@ from torch_geometric.data import HeteroData
 from .. import config
 from ..data import get_hpo, norm_hpo
 from ..data.kg import _edges
-from ..features.variant_features import all_variant_features, model_columns
+from ..features.variant_features import all_variant_features, model_columns, model_matrix
 from .leakage import remove_heldout_disease_edges
 
 USED_COLUMNS = ["variant_id", "gene", "ref_aa", "alt_aa", "class_2023", "split", "pheno_ids_2023", "disease_2023"]
@@ -49,7 +49,7 @@ KG_RELATIONS = {
 VARIANT_GENE = ("variant", "in_gene", "gene")
 VARIANT_DISEASE = ("variant", "linked_to", "disease")
 NODE_TYPES = ("gene", "disease", "phenotype", "variant")
-CACHE_VERSION = "a2"
+CACHE_VERSION = "a3"
 
 _MONDO = re.compile(r"MONDO:MONDO:(\d+)")
 
@@ -106,11 +106,11 @@ def match_diseases(row: pd.Series, by_mondo: dict[int, str], by_name: dict[str, 
     return hits, ("name" if hits else "none")
 
 
-def _cache_key(variants: pd.DataFrame, heldout: set[str], drop_features: tuple[str, ...]) -> str:
+def _cache_key(variants: pd.DataFrame, heldout: set[str], options: dict) -> str:
     h = hashlib.sha1(CACHE_VERSION.encode())
     h.update(pd.util.hash_pandas_object(variants, index=False).values.tobytes())
     h.update("|".join(sorted(heldout)).encode())
-    h.update("|".join(sorted(drop_features)).encode())
+    h.update(repr(sorted(options.items())).encode())
     h.update(str(config.primekg_csv().stat().st_size).encode())
     table = config.feature_table_csv()
     if table.exists():
@@ -120,8 +120,9 @@ def _cache_key(variants: pd.DataFrame, heldout: set[str], drop_features: tuple[s
 
 def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str] | frozenset = frozenset(),
                 cache: bool = True, verbose: bool = True, drop_features: tuple[str, ...] = (),
-                feature_table: pd.DataFrame | None = None) -> VariantGraph:
+                feature_table: pd.DataFrame | None = None, am_indicator: bool = True) -> VariantGraph:
     """drop_features removes variant features, e.g. ("alphamissense",) for the run without AlphaMissense.
+    am_indicator adds an am_missing feature (see features.variant_features.model_matrix).
     feature_table overrides feature_table.csv (tests)."""
     if variants is None:
         from ..data import load_variants
@@ -129,8 +130,9 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
         variants = load_variants()
     variants = variants[USED_COLUMNS].reset_index(drop=True)
     heldout = set(heldout_diseases)
+    options = {"drop_features": tuple(sorted(drop_features)), "am_indicator": am_indicator}
 
-    cache_path = config.data_dir() / "cache" / f"variant_graph_{_cache_key(variants, heldout, drop_features)}.pt"
+    cache_path = config.data_dir() / "cache" / f"variant_graph_{_cache_key(variants, heldout, options)}.pt"
     if cache and cache_path.exists():
         graph = torch.load(cache_path, weights_only=False)
         if verbose:
@@ -173,11 +175,12 @@ def build_graph(variants: pd.DataFrame | None = None, heldout_diseases: set[str]
     put(VARIANT_DISEASE, variant_disease)
 
     feats = all_variant_features(variants, feature_table)
-    cols = [c for c in model_columns(feats) if c not in drop_features]
-    x = feats[cols].to_numpy(dtype=np.float32)
-    mean = np.nanmean(x[is_train], axis=0) if is_train.any() else np.zeros(len(cols), dtype=np.float32)
-    std = np.nanstd(x[is_train], axis=0) if is_train.any() else np.ones(len(cols), dtype=np.float32)
-    x = np.nan_to_num((x - mean) / np.where(std > 0, std, 1.0))
+    mat = model_matrix(feats, [c for c in model_columns(feats) if c not in drop_features], is_train, am_indicator)
+    cols = list(mat.columns)
+    x = mat.to_numpy(dtype=np.float32)
+    mean = x[is_train].mean(axis=0) if is_train.any() else np.zeros(len(cols), dtype=np.float32)
+    std = x[is_train].std(axis=0) if is_train.any() else np.ones(len(cols), dtype=np.float32)
+    x = (x - mean) / np.where(std > 0, std, 1.0)
     data["variant"].x = torch.from_numpy(x.astype(np.float32))
     y = variants["class_2023"].map(LABELS_2023).to_numpy(dtype=np.float32, na_value=np.nan)
     data["variant"].y = torch.from_numpy(np.where(is_train, y, np.nan).astype(np.float32))
