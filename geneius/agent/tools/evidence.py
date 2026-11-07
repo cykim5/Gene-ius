@@ -57,6 +57,16 @@ def evidence_report(variant: str, time_machine: bool = False) -> dict:
     if not ids:
         return {"query": variant, "status": "not found", "records": []}
     records = [_record(vid, time_machine) for vid in ids]
+    if not time_machine:
+        from .variant_info import _population, assess
+
+        for r in records:
+            pop = _population(r["variation_id"])
+            r["population"] = pop["summary"] + ("; seen in apparently healthy people"
+                                                 if pop["seen_in_apparently_healthy_people"] else "")
+            r["assessment"] = assess(r, pop)
+            if r["assessment"]["unsure"]:
+                r["assessment"]["next_step"] = "say you're unsure, explain why, and call suggest_assay"
     out = {"query": variant, "records": records, "report_markdown": "\n\n".join(_markdown(r) for r in records),
            "disclaimer": DISCLAIMER}
     if len(ids) > 1:

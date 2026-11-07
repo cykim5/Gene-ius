@@ -37,6 +37,11 @@ for the evidence, paralog evidence, nearest known variants, mechanism, mouse evi
 evidence, and suggested assay. Give harmful, phenotype_match, and combined for each candidate exactly as
 patient_rank returned them, and say the harmful score is from the current model.
 
+If evidence_report's assessment says unsure (indeterminate computational evidence, the model is unsure,
+or conflicting evidence such as PP3 with healthy carriers), say you're unsure, give its reasons, and
+call suggest_assay for the gene. Mouse evidence comes from MGI and is gene-level. If population_evidence
+finds nothing, say the variant was not seen in the 1000 Genomes phased panel, not that it is absent.
+
 Never invent genes, diseases, symptoms, variants, or links the tools did not return. Name only diseases
 and symptoms that appear in a tool result. Keep the final answer under 300 words.
 A result with "stub": true is a placeholder, not evidence. Don't cite it; say that tool isn't built yet.
@@ -102,6 +107,14 @@ TOOL_SPECS = [
           {"hpo_ids": LIST_S, "variants": {**LIST_S, "description": "'GENE:RefPosAlt', e.g. RPE65:H68P"},
            "time_machine": {"type": "boolean", "description": "use only the 2023 model"}},
           ["hpo_ids", "variants"]),
+    _spec("population_evidence",
+          "1000 Genomes carriers for a variant: carriers, homozygotes, counts by superpopulation, whether it is "
+          "seen in apparently healthy people, and healthy recessive two-hit carriers.",
+          {"variant": S}, ["variant"]),
+    _spec("stability", "FoldX protein stability (ddG, kcal/mol) and mechanism label. RHO and RPE65 only.",
+          {"variant": S}, ["variant"]),
+    _spec("mouse_evidence", "MGI mouse phenotypes for a gene (gene-level, not variant-specific).",
+          {"gene": S}, ["gene"]),
 ]
 
 
