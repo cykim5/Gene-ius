@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gene-ius</title>
+  <meta name="description" content="Which uncertain variant to test first, and why.">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js"
+          integrity="sha384-zxWwO8usW1MzUHquSL3foT+Cw2ndelPQ5bNzHVYdKGiJ0vqvqQ8Y9XeKLmotffmQ"
+          crossorigin="anonymous" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <div class="brand">
+        <span class="dot" aria-hidden="true"></span>
+        <div>
+          <h1>Gene-ius</h1>
+          <p>Which uncertain variant to test first, and why.</p>
+        </div>
+      </div>
+      <form id="search" class="search" autocomplete="off">
+        <label for="q" class="sr">Variant</label>
+        <input id="q" name="q" list="gene-list" placeholder="Gene and change, like RHO:C187S" maxlength="40" required>
+        <datalist id="gene-list"></datalist>
+        <button type="submit">Look up</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="demos" aria-label="Demo variants">
+      <span class="muted">Try:</span>
+      <div id="demo-list" class="chips"></div>
+    </section>
+
+    <p id="message" class="message" hidden></p>
+
+    <section id="intro" class="intro">
+      <h2>A result that answers nothing</h2>
+      <p>About a third of the variants in ClinVar are labeled "uncertain significance". For each one, Gene-ius predicts four things in the order biology works: is it harmful, how does the protein break, which disease follows, and which treatment strategy fits. Every answer shows the evidence behind it.</p>
+      <ol class="abcd">
+        <li><b>A</b> Harmful?</li>
+        <li><b>B</b> How?</li>
+        <li><b>C</b> Which disease?</li>
+        <li><b>D</b> What strategy?</li>
+      </ol>
+    </section>
+
+    <section id="result" hidden>
+      <div class="result-head">
+        <div>
+          <p class="eyebrow" id="r-panel"></p>
+          <h2 id="r-title"></h2>
+          <p class="muted" id="r-sub"></p>
+        </div>
+        <div id="r-ids" class="chips"></div>
+      </div>
+
+      <div class="grid">
+        <div class="cards">
+          <article class="card">
+            <h3><b>A</b> Harmful?</h3>
+            <div class="score">
+              <div class="bar"><span id="a-bar"></span></div>
+              <strong id="a-score"></strong>
+            </div>
+            <dl>
+              <dt>Confidence</dt><dd id="a-conf"></dd>
+              <dt>ACMG evidence</dt><dd id="a-acmg"></dd>
+              <dt>Evidence</dt><dd id="a-evidence"></dd>
+            </dl>
+          </article>
+
+          <article class="card time" id="time-card">
+            <h3>Time machine</h3>
+            <p class="muted">Our model trained only on data from January 2023, then checked against what experts decided later.</p>
+            <div class="tm">
+              <div><span class="muted">2023 model</span><strong id="t-2023"></strong><span id="t-2023-ev" class="muted small"></span></div>
+              <div class="arrow" aria-hidden="true">&rarr;</div>
+              <div><span class="muted">ClinVar today</span><strong id="t-now"></strong></div>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3><b>B</b> How does the protein break?</h3>
+            <dl>
+              <dt>Mechanism</dt><dd id="b-label"></dd>
+              <dt>Stability change</dt><dd id="b-ddg"></dd>
+              <dt>Main force</dt><dd id="b-term"></dd>
+            </dl>
+          </article>
+
+          <article class="card">
+            <h3><b>C</b> Which disease?</h3>
+            <dl>
+              <dt>Nearest known</dt><dd id="c-near"></dd>
+              <dt>Related genes</dt><dd id="c-para"></dd>
+              <dt>Mouse</dt><dd id="c-mouse"></dd>
+            </dl>
+          </article>
+
+          <article class="card">
+            <h3><b>D</b> What next?</h3>
+            <dl>
+              <dt>Strategy</dt><dd id="d-strategy"></dd>
+              <dt>Assay to settle it</dt><dd id="d-assay"></dd>
+            </dl>
+            <p class="muted small">Treatment strategies are hypotheses to test, not recommendations.</p>
+          </article>
+        </div>
+
+        <div class="side">
+          <article class="card viewer-card">
+            <h3>Structure</h3>
+            <div id="viewer" class="viewer" role="img" aria-label="AlphaFold structure"></div>
+            <p id="viewer-note" class="muted small"></p>
+            <ul class="legend">
+              <li><i class="sw var"></i>This variant</li>
+              <li><i class="sw near"></i>Within 8 &Aring;</li>
+              <li><i class="sw hi"></i>Very confident</li>
+              <li><i class="sw lo"></i>Low confidence</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>Ask the agent</h3>
+            <form id="ask" class="ask">
+              <label for="question" class="sr">Question</label>
+              <textarea id="question" maxlength="400" rows="2" placeholder="Why is this one harmful? What should the lab test?"></textarea>
+              <button type="submit">Ask</button>
+            </form>
+            <div id="answer" class="answer" aria-live="polite"></div>
+          </article>
+        </div>
+      </div>
+
+      <article class="card ranked">
+        <h3 id="rank-title">Uncertain today, ranked</h3>
+        <p class="muted small">Variants in this gene still labeled uncertain in ClinVar, in the order we'd test them.</p>
+        <table>
+          <thead><tr><th>#</th><th>Variant</th><th>Harmful</th><th>Confidence</th><th>Assay</th></tr></thead>
+          <tbody id="rank-body"></tbody>
+        </table>
+      </article>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Research and decision support only. Under ACMG/AMP rules a computational prediction is supporting evidence, not a classification. Public data only: ClinVar, AlphaFold, AlphaMissense, gnomAD, 1000 Genomes, UniProt, MGI.</p>
+    <p>Nucleate Pittsburgh BioHack 2026, team Gene-ius.</p>
+  </footer>
+</body>
+</html>
