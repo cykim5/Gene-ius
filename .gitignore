@@ -4,7 +4,11 @@
 !.env.example
 
 # Data (large, re-downloadable with scripts/download_data.sh)
-/data/
+# Git can't re-include a file inside an ignored folder, so ignore data/'s contents instead of data/ itself.
+/data/*
+!/data/processed/
+/data/processed/*
+!/data/processed/variants.csv
 *.csv.part
 
 # Eval outputs (regenerable)
