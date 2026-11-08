@@ -1,0 +1,187 @@
+{
+ "genes": {
+  "ABCA4": {
+   "uniprot": "P78363",
+   "length": 2273,
+   "variants": 1248,
+   "mouse": "Abca4 mutant mice (MGI): hematopoietic system phenotype, homeostasis/metabolism phenotype, nervous system phenotype, pigmentation phenotype, skeleton phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "BEST1": {
+   "uniprot": "O76090",
+   "length": 585,
+   "variants": 369,
+   "mouse": "Best1 mutant mice (MGI): cellular phenotype, pigmentation phenotype, reproductive system phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "CACNA1C": {
+   "uniprot": "Q13936",
+   "length": 2221,
+   "variants": 800,
+   "mouse": "Cacna1c mutant mice (MGI): adipose tissue phenotype, behavior/neurological phenotype, cardiovascular system phenotype, cellular phenotype, craniofacial phenotype, embryo phenotype, endocrine/exocrine gland phenotype, growth/size/body region phenotype, homeostasis/metabolism phenotype, immune system phenotype, integument phenotype, limbs/digits/tail phenotype, liver/biliary system phenotype, mortality/aging, muscle phenotype, nervous system phenotype, renal/urinary system phenotype, skeleton phenotype",
+   "panel": "cardiac"
+  },
+  "CEP290": {
+   "uniprot": "O15078",
+   "length": 2479,
+   "variants": 678,
+   "mouse": "Cep290 mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, cellular phenotype, craniofacial phenotype, embryo phenotype, growth/size/body region phenotype, hematopoietic system phenotype, homeostasis/metabolism phenotype, immune system phenotype, mortality/aging, nervous system phenotype, pigmentation phenotype, renal/urinary system phenotype, reproductive system phenotype, respiratory system phenotype, skeleton phenotype, taste/olfaction phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "CRX": {
+   "uniprot": "O43186",
+   "length": 299,
+   "variants": 112,
+   "mouse": "Crx mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, endocrine/exocrine gland phenotype, growth/size/body region phenotype, hematopoietic system phenotype, homeostasis/metabolism phenotype, immune system phenotype, integument phenotype, nervous system phenotype, pigmentation phenotype, renal/urinary system phenotype, reproductive system phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "GLA": {
+   "uniprot": "P06280",
+   "length": 429,
+   "variants": 443,
+   "mouse": "Gla mutant mice (MGI): cardiovascular system phenotype, cellular phenotype, growth/size/body region phenotype, liver/biliary system phenotype, muscle phenotype, renal/urinary system phenotype",
+   "panel": "other"
+  },
+  "GUCY2D": {
+   "uniprot": "Q02846",
+   "length": 1103,
+   "variants": 416,
+   "mouse": "Gucy2e mutant mice (MGI): nervous system phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "KCNH2": {
+   "uniprot": "Q12809",
+   "length": 1159,
+   "variants": 1168,
+   "mouse": "Kcnh2 mutant mice (MGI): cardiovascular system phenotype",
+   "panel": "cardiac"
+  },
+  "KCNJ2": {
+   "uniprot": "P63252",
+   "length": 427,
+   "variants": 220,
+   "mouse": "Kcnj2 mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, craniofacial phenotype, digestive/alimentary phenotype, growth/size/body region phenotype, homeostasis/metabolism phenotype, limbs/digits/tail phenotype, mortality/aging, muscle phenotype, respiratory system phenotype, skeleton phenotype",
+   "panel": "cardiac"
+  },
+  "KCNQ1": {
+   "uniprot": "P51787",
+   "length": 676,
+   "variants": 726,
+   "mouse": "Kcnq1 mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, digestive/alimentary phenotype, endocrine/exocrine gland phenotype, growth/size/body region phenotype, hearing/vestibular/ear phenotype, homeostasis/metabolism phenotype, muscle phenotype, nervous system phenotype",
+   "panel": "cardiac"
+  },
+  "LMNA": {
+   "uniprot": "P02545",
+   "length": 664,
+   "variants": 798,
+   "mouse": "Lmna mutant mice (MGI): adipose tissue phenotype, behavior/neurological phenotype, cardiovascular system phenotype, cellular phenotype, craniofacial phenotype, digestive/alimentary phenotype, endocrine/exocrine gland phenotype, growth/size/body region phenotype, hearing/vestibular/ear phenotype, hematopoietic system phenotype, homeostasis/metabolism phenotype, immune system phenotype, integument phenotype, limbs/digits/tail phenotype, liver/biliary system phenotype, mortality/aging, muscle phenotype, nervous system phenotype, pigmentation phenotype, renal/urinary system phenotype, reproductive system phenotype, respiratory system phenotype, skeleton phenotype, vision/eye phenotype",
+   "panel": "cardiac"
+  },
+  "MYBPC3": {
+   "uniprot": "Q14896",
+   "length": 1274,
+   "variants": 1189,
+   "mouse": "Mybpc3 mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, cellular phenotype, growth/size/body region phenotype, homeostasis/metabolism phenotype, mortality/aging, muscle phenotype",
+   "panel": "cardiac"
+  },
+  "MYH7": {
+   "uniprot": "P12883",
+   "length": 1935,
+   "variants": 1970,
+   "mouse": "Myh7 mutant mice (MGI): cardiovascular system phenotype, growth/size/body region phenotype, homeostasis/metabolism phenotype, mortality/aging, muscle phenotype, respiratory system phenotype",
+   "panel": "cardiac"
+  },
+  "NR2E3": {
+   "uniprot": "Q9Y5X4",
+   "length": 410,
+   "variants": 175,
+   "mouse": "Nr2e3 mutant mice (MGI): cellular phenotype, nervous system phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "OPA1": {
+   "uniprot": "O60313",
+   "length": 960,
+   "variants": 300,
+   "mouse": "Opa1 mutant mice (MGI): adipose tissue phenotype, behavior/neurological phenotype, cardiovascular system phenotype, cellular phenotype, craniofacial phenotype, embryo phenotype, endocrine/exocrine gland phenotype, growth/size/body region phenotype, hearing/vestibular/ear phenotype, homeostasis/metabolism phenotype, mortality/aging, muscle phenotype, nervous system phenotype, skeleton phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "PAX6": {
+   "uniprot": "P26367",
+   "length": 422,
+   "variants": 124,
+   "mouse": "Pax6 mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, cellular phenotype, craniofacial phenotype, digestive/alimentary phenotype, embryo phenotype, endocrine/exocrine gland phenotype, growth/size/body region phenotype, homeostasis/metabolism phenotype, immune system phenotype, integument phenotype, liver/biliary system phenotype, mortality/aging, muscle phenotype, neoplasm, nervous system phenotype, pigmentation phenotype, respiratory system phenotype, skeleton phenotype, taste/olfaction phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "PKP2": {
+   "uniprot": "Q99959",
+   "length": 881,
+   "variants": 577,
+   "mouse": "Pkp2 mutant mice (MGI): cardiovascular system phenotype, cellular phenotype, homeostasis/metabolism phenotype, mortality/aging, muscle phenotype",
+   "panel": "cardiac"
+  },
+  "PRPH2": {
+   "uniprot": "P23942",
+   "length": 346,
+   "variants": 267,
+   "mouse": "Prph2 mutant mice (MGI): cardiovascular system phenotype, cellular phenotype, hematopoietic system phenotype, immune system phenotype, nervous system phenotype, pigmentation phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "RHO": {
+   "uniprot": "P08100",
+   "length": 348,
+   "variants": 255,
+   "mouse": "Rho mutant mice (MGI): cardiovascular system phenotype, cellular phenotype, hematopoietic system phenotype, homeostasis/metabolism phenotype, immune system phenotype, nervous system phenotype, pigmentation phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "RPE65": {
+   "uniprot": "Q16518",
+   "length": 533,
+   "variants": 245,
+   "mouse": "Rpe65 mutant mice (MGI): behavior/neurological phenotype, hematopoietic system phenotype, homeostasis/metabolism phenotype, immune system phenotype, nervous system phenotype, pigmentation phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "RPGR": {
+   "uniprot": "Q92834",
+   "length": 1020,
+   "variants": 177,
+   "mouse": "Rpgr mutant mice (MGI): cardiovascular system phenotype, muscle phenotype, nervous system phenotype, pigmentation phenotype, vision/eye phenotype",
+   "panel": "retina"
+  },
+  "SCN5A": {
+   "uniprot": "Q14524",
+   "length": 2016,
+   "variants": 1663,
+   "mouse": "Scn5a mutant mice (MGI): behavior/neurological phenotype, cardiovascular system phenotype, embryo phenotype, growth/size/body region phenotype, liver/biliary system phenotype, mortality/aging, muscle phenotype, nervous system phenotype, respiratory system phenotype",
+   "panel": "cardiac"
+  },
+  "USH2A": {
+   "uniprot": "O75445",
+   "length": 5202,
+   "variants": 1985,
+   "mouse": "Ush2a mutant mice (MGI): hearing/vestibular/ear phenotype, nervous system phenotype, vision/eye phenotype",
+   "panel": "retina"
+  }
+ },
+ "demos": [
+  {
+   "variant": "RHO:C187S",
+   "label": "Steve's variant"
+  },
+  {
+   "variant": "KCNQ1:R591C",
+   "label": "Time machine"
+  },
+  {
+   "variant": "KCNQ1:R591P",
+   "label": "Same residue, uncertain today"
+  },
+  {
+   "variant": "CACNA1C:G402R",
+   "label": "Related genes"
+  },
+  {
+   "variant": "RHO:A168T",
+   "label": "Unsure case"
+  }
+ ]
+}

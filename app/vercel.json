@@ -1,7 +1,7 @@
 {
   "cleanUrls": true,
   "functions": {
-    "api/ask.py": { "includeFiles": "data/genes/**", "maxDuration": 60 }
+    "api/ask.py": { "includeFiles": "data/**", "maxDuration": 60 }
   },
   "headers": [
     {

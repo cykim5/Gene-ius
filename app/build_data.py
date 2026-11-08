@@ -33,8 +33,11 @@ CHANNELS = {"SCN5A", "KCNQ1", "KCNH2", "KCNJ2", "CACNA1C"}
 DEMOS = [
     ("RHO:C187S", "Steve's variant"),
     ("KCNQ1:R591C", "Time machine"),
+    ("KCNQ1:R591P", "Same residue, uncertain today"),
     ("CACNA1C:G402R", "Related genes"),
 ]
+UNSURE_GENES = ["RHO", "KCNQ1", "RPE65", "SCN5A"]  # pick the unsure demo from a gene with a 3D model
+DROP = {"disease", "disclaimer", "in_training_today", "mouse_evidence"}  # unused or gene-level
 
 _VARIANT = re.compile(r"^([A-Z0-9]+):([A-Z])(\d+)([A-Z])$")
 
@@ -65,13 +68,20 @@ def main(argv=None) -> None:
 
     rows = json.loads(Path(args.predictions).read_text())
     by_gene = defaultdict(list)
+    mouse = {}
     for r in rows:
         m = _VARIANT.match(str(r.get("variant", "")))
         if not m or m.group(1) not in UNIPROT:
             continue
         gene, ref, pos, alt = m.groups()
-        r = dict(r, gene=gene, ref=ref, pos=int(pos), alt=alt, variation_id=str(r.get("variation_id", "")))
-        r["treatment"] = strategy(gene, (r.get("mechanism") or {}).get("label", ""))
+        if r.get("mouse_evidence"):
+            mouse[gene] = r["mouse_evidence"]
+        r = {k: v for k, v in r.items() if k not in DROP}
+        r.update(gene=gene, ref=ref, pos=int(pos), alt=alt, variation_id=str(r.get("variation_id", "")))
+        # The team's gene-level treatment note wins. Otherwise fall back to the mechanism rule.
+        if not r.get("treatment"):
+            rule = strategy(gene, (r.get("mechanism") or {}).get("label", "").split(" (")[0])
+            r["treatment"] = f"{rule['strategy']}: {rule['why']}" if rule else ""
         by_gene[gene].append(r)
 
     genes_dir = OUT / "genes"
@@ -84,12 +94,14 @@ def main(argv=None) -> None:
 
     present = {f"{g}:{r['ref']}{r['pos']}{r['alt']}": r for g, recs in by_gene.items() for r in recs}
     demos = [{"variant": v, "label": label} for v, label in DEMOS if v in present]
-    unsure = next((k for k, r in present.items() if r.get("confidence") == "unsure"), None)
+    unsure = [k for k, r in present.items() if r.get("confidence") == "unsure" and r.get("clinvar_today") == "VUS"]
+    unsure.sort(key=lambda k: (UNSURE_GENES.index(k.split(":")[0]) if k.split(":")[0] in UNSURE_GENES else 99, k))
     if unsure:
-        demos.append({"variant": unsure, "label": "Unsure case"})
+        demos.append({"variant": unsure[0], "label": "Unsure case"})
 
     index = {
         "genes": {g: {"uniprot": UNIPROT[g][0], "length": UNIPROT[g][1], "variants": len(by_gene[g]),
+                      "mouse": mouse.get(g, ""),
                       "panel": "retina" if g in RETINA else "cardiac" if g in CHANNELS or g in
                       {"MYH7", "MYBPC3", "LMNA", "PKP2"} else "other"}
                   for g in sorted(by_gene)},

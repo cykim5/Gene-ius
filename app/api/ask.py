@@ -53,7 +53,11 @@ def _record(gene: str, variation_id: str) -> dict | None:
     path = DATA / f"{gene}.json"
     if not path.exists():
         return None
-    return next((r for r in json.loads(path.read_text()) if r.get("variation_id") == variation_id), None)
+    record = next((r for r in json.loads(path.read_text()) if r.get("variation_id") == variation_id), None)
+    if record is not None:
+        index = json.loads((DATA.parent / "index.json").read_text())
+        record = dict(record, mouse_evidence=index["genes"].get(gene, {}).get("mouse", ""))
+    return record
 
 
 def _call_llm(record: dict, question: str) -> str:

@@ -7,7 +7,14 @@ const AA3 = {
 const AA1TO3 = Object.fromEntries(Object.entries(AA3).map(([k, v]) => [v, k.toUpperCase()]));
 const CLINVAR = {
   P: ["Pathogenic", "p"], LP: ["Likely pathogenic", "p"], B: ["Benign", "b"], LB: ["Likely benign", "b"],
-  VUS: ["Uncertain", "u"], conflicting: ["Conflicting", "u"],
+  VUS: ["Uncertain", "u"], conflicting: ["Conflicting", "u"], other: ["Other", ""],
+};
+const ROLE_2023 = {
+  test: "Held-out test variant: the 2023 model never saw its answer.",
+  test_1star: "Held-out test variant (1-star review): the 2023 model never saw its answer.",
+  train: "Part of the 2023 training data, so this isn't a blind test.",
+  unlabeled: "Uncertain in January 2023.",
+  exclude: "Not used in the 2023 grading.",
 };
 const UNCERTAIN_TODAY = new Set(["VUS", "conflicting"]);
 
@@ -135,6 +142,7 @@ function show(recs, pick) {
   $("a-score").textContent = Number.isFinite(h) ? h.toFixed(2) : "?";
   setText("a-conf", r.confidence === "unsure" ? el("span", { class: "tag u" }, "Unsure") : r.confidence);
   setText("a-acmg", evidenceLabel(r.computational_evidence));
+  setText("a-am", r.alphamissense != null ? Number(r.alphamissense).toFixed(2) : "", "Not in our data");
   setText("a-evidence", r.evidence);
 
   // Time machine
@@ -144,21 +152,27 @@ function show(recs, pick) {
     $("t-2023").textContent = Number(r.harmful_2023_model).toFixed(2);
     $("t-2023-ev").textContent = r.evidence_2023 || "";
     setText("t-now", clinvarTag(r.clinvar_today));
+    $("t-role").textContent = ROLE_2023[r.role_2023] || "";
   }
 
   // B
   const mech = r.mechanism || {};
-  setText("b-label", mech.label ? mech.label.replace(/_/g, " ") : "", "Not modeled for this protein");
+  setText("b-label", mech.label ? mech.label.replace(/_/g, " ") : "",
+    "Not modeled yet. FoldX ran on RHO, RPE65 and GLA.");
   setText("b-ddg", mech.ddg_kcal_mol != null ? `${mech.ddg_kcal_mol > 0 ? "+" : ""}${mech.ddg_kcal_mol} kcal/mol${mech.capped ? " (capped)" : ""}` : "", "Not modeled");
   setText("b-term", mech.dominant_term, "Not modeled");
 
   // C
+  const groups = Object.entries(r.disease_groups || {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const list = groups.length ? el("ol", { class: "diseases" }) : "";
+  for (const [name, score] of groups) list.append(el("li", {}, name, el("span", { class: "muted small" }, ` ${score.toFixed(1)}`)));
+  setText("c-disease", list, "No disease prediction");
   setText("c-near", r.nearest_known, "No known disease variant nearby");
   setText("c-para", r.paralog_evidence, "None at the matching residue");
-  setText("c-mouse", r.mouse_evidence);
+  setText("c-mouse", r.mouse_evidence || info.mouse);
 
   // D
-  setText("d-strategy", r.treatment ? `${r.treatment.strategy}. ${r.treatment.why}` : "", "Needs a mechanism first");
+  setText("d-strategy", r.treatment, "No strategy in our data for this gene yet");
   setText("d-assay", r.suggested_assay);
 
   $("answer").replaceChildren();
@@ -186,7 +200,7 @@ async function renderRanked(gene, current) {
     },
     el("td", {}, String(i + 1)),
     el("td", {}, `${x.ref}${x.pos}${x.alt}`),
-    el("td", {}, Number(x.harmful).toFixed(2)),
+    el("td", {}, Number(x.harmful).toFixed(3)),
     el("td", {}, x.confidence || ""),
     el("td", {}, x.suggested_assay || "")));
   });
