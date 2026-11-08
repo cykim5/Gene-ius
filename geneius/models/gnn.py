@@ -10,7 +10,7 @@ Output A: node classification on variant nodes, loss only on train labels (class
 Validation is ~10% of train variants, held out by whole gene, never the test set. Validation
 variants get no disease edges, like test variants. Each epoch also drops half of the remaining
 variant-disease edges, so the model can't lean on edges that test variants never have.
-Early stopping on validation AUPRC. Full-batch training (the graph fits on a laptop CPU).
+Early stopping on validation AUPRC. Full-batch training. Uses CUDA when `torch.cuda.is_available()`.
 
     python -m geneius.models.gnn     # train, then write predictions for every variant
 """
@@ -105,42 +105,48 @@ def train(graph: VariantGraph, genes: list[str], out_dir: Path | None = None, hi
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(seed)
+    print(f"[gnn] device {device}", flush=True)
     out_dir = out_dir or default_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
-    data = graph.data
+    data = graph.data.to(device)
     y = data["variant"].y
-    train_mask = data["variant"].train_mask
-    train_idx = np.flatnonzero(train_mask.numpy())
+    y_cpu = y.detach().cpu().numpy()
+    train_idx = np.flatnonzero(data["variant"].train_mask.detach().cpu().numpy())
     gene_arr = np.asarray(genes)
-    val_idx = gene_split(gene_arr, np.nan_to_num(y.numpy()), train_idx, 0.1, seed)
+    val_idx = gene_split(gene_arr, np.nan_to_num(y_cpu), train_idx, 0.1, seed)
     fit_idx = np.setdiff1d(train_idx, val_idx)
-    fit_t, val_t = torch.from_numpy(fit_idx), torch.from_numpy(val_idx)
+    fit_t = torch.from_numpy(fit_idx).to(device)
+    val_t = torch.from_numpy(val_idx).to(device)
 
     vd = data[VARIANT_DISEASE].edge_index
     not_val = ~torch.isin(vd[0], val_t)
     eval_data = _without_edges(data, not_val)
-    n_pos = float(y[fit_t].sum())
-    pos_weight = torch.tensor((len(fit_idx) - n_pos) / max(n_pos, 1.0))
+    n_pos = float(y[fit_t].sum().item())
+    pos_weight = torch.tensor((len(fit_idx) - n_pos) / max(n_pos, 1.0), device=device)
 
     num_nodes = {t: data[t].num_nodes for t in data.node_types}
     feature_dims = {t: data[t].x.size(1) for t in data.node_types if "x" in data[t]}
-    model = VariantGNN(num_nodes, feature_dims, data.metadata(), hidden)
+    model = VariantGNN(num_nodes, feature_dims, data.metadata(), hidden).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
-    gen = torch.Generator().manual_seed(seed + 1)
+    gen = torch.Generator(device=device)
+    gen.manual_seed(seed + 1)
     history, best, best_state, bad = [], -1.0, None, 0
     t0 = time.perf_counter()
     for epoch in range(1, epochs + 1):
         model.train()
         opt.zero_grad()
-        keep = not_val & (torch.rand(vd.size(1), generator=gen) >= drop_edge)
+        keep = not_val & (torch.rand(vd.size(1), device=device, generator=gen) >= drop_edge)
         logits = model(_without_edges(data, keep))
         loss = F.binary_cross_entropy_with_logits(logits[fit_t], y[fit_t], pos_weight=pos_weight)
         loss.backward()
         opt.step()
         model.eval()
         with torch.no_grad():
-            p_val = torch.sigmoid(model(eval_data))[val_t].numpy()
-        val_auprc = auprc(y[val_t].numpy(), p_val)
+            p_val = torch.sigmoid(model(eval_data))[val_t].detach().cpu().numpy()
+        val_auprc = auprc(y_cpu[val_idx], p_val)
         history.append({"epoch": epoch, "loss": round(loss.item(), 5), "val_auprc": round(val_auprc, 5),
                         "seconds": round(time.perf_counter() - t0, 1)})
         if log_every and (epoch == 1 or epoch % log_every == 0):
@@ -156,7 +162,7 @@ def train(graph: VariantGraph, genes: list[str], out_dir: Path | None = None, hi
         model.load_state_dict(best_state)
     model.eval()
     with torch.no_grad():
-        p_all = torch.sigmoid(model(data)).numpy()
+        p_all = torch.sigmoid(model(data)).detach().cpu().numpy()
 
     pd.DataFrame({"variant_id": graph.variant_ids, "gene": genes, "harmful": np.round(p_all, 5)}).to_csv(
         out_dir / "predictions.csv", index=False)
@@ -174,6 +180,7 @@ def train(graph: VariantGraph, genes: list[str], out_dir: Path | None = None, hi
         "feature_columns": graph.feature_columns,
         "disease_match": graph.disease_match,
         "seed": seed,
+        "device": str(device),
         "history": history,
     }
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
