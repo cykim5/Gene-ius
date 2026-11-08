@@ -9,6 +9,8 @@
 !/data/processed/
 /data/processed/*
 !/data/processed/variants.csv
+!/data/processed/uniprot_mapping.csv
+!/data/processed/uniprot_features.csv
 *.csv.part
 
 # Eval outputs (regenerable)
