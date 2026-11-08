@@ -31,10 +31,11 @@ def main(argv=None) -> None:
 
         name = f"{args.gene.upper()} {args.change}"
         pred = gnn_predict(name)
-        mech = max(pred["mechanism"], key=pred["mechanism"].get)
+        mechanisms = pred.get("mechanism") or {}
+        mech = max(mechanisms, key=mechanisms.get) if mechanisms else None
         out = {
             "prediction": pred,
-            "treatment": suggest_treatment(mech, gene=args.gene),
+            "treatment": suggest_treatment(mech, gene=args.gene) if mech else None,
             "assay": suggest_assay(args.gene),
         }
         print(json.dumps(out, indent=2))

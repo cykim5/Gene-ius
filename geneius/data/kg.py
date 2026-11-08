@@ -133,10 +133,12 @@ def _edges(df: pd.DataFrame, relation: str, a_type: str, b_type: str) -> pd.Data
 
 
 def read_primekg(relations: list[str] | None = None) -> pd.DataFrame:
-    df = pd.read_csv(config.primekg_csv(), usecols=PRIMEKG_COLS, dtype=str, low_memory=False)
-    if relations:
-        df = df[df.relation.isin(relations)]
-    return df
+    if not relations:
+        return pd.read_csv(config.primekg_csv(), usecols=PRIMEKG_COLS, dtype=str, low_memory=False)
+    # Filter while reading: loading all ~8M rows first peaks near 2.5 GB, even for a few relations.
+    keep = set(relations)
+    chunks = pd.read_csv(config.primekg_csv(), usecols=PRIMEKG_COLS, dtype=str, chunksize=1_000_000)
+    return pd.concat([c[c.relation.isin(keep)] for c in chunks], ignore_index=True)
 
 
 @lru_cache(maxsize=1)

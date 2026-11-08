@@ -45,6 +45,52 @@ def clinvar_current() -> Path:
     return data_dir() / "variant_summary_current.txt.gz"
 
 
+def variants_csv() -> Path:
+    """The ClinVar 2023 vs current variant table. Committed in the repo, so it's not under data_dir()."""
+    raw = os.environ.get("GENEIUS_VARIANTS_CSV") or str(REPO_ROOT / "data" / "processed" / "variants.csv")
+    return Path(raw).expanduser()
+
+
+def feature_table_csv() -> Path:
+    """Teammates' variant feature table (AlphaMissense, pLDDT, UniProt regions). Local only, not tracked."""
+    raw = os.environ.get("GENEIUS_FEATURE_TABLE") or str(REPO_ROOT / "data" / "processed" / "feature_table.csv")
+    return Path(raw).expanduser()
+
+
+def baseline_predictions_csv() -> Path:
+    """Teammates' predictions.csv. Its harmful_2023_model column is a 2023-trained baseline."""
+    raw = os.environ.get("GENEIUS_BASELINE_PREDICTIONS") or str(REPO_ROOT / "data" / "processed" / "predictions.csv")
+    return Path(raw).expanduser()
+
+
+def _processed(name: str, env: str) -> Path:
+    return Path(os.environ.get(env) or str(REPO_ROOT / "data" / "processed" / name)).expanduser()
+
+
+def paralog_variants_csv() -> Path:
+    return _processed("paralog_pathogenic_2023.csv", "GENEIUS_PARALOG_VARIANTS")
+
+
+def paralog_sequences_json() -> Path:
+    return _processed("paralog_sequences.json", "GENEIUS_PARALOG_SEQUENCES")
+
+
+def processed_dir() -> Path:
+    """Teammates' processed files (predictions.json, demo cards, 1000 Genomes, viewers). Local only."""
+    return Path(os.environ.get("GENEIUS_PROCESSED_DIR") or str(REPO_ROOT / "data" / "processed")).expanduser()
+
+
+def ca_coords_pkl() -> Path:
+    """AlphaFold C-alpha coordinates and pLDDT per residue, keyed by gene."""
+    return _processed("alphafold_ca_coords.pkl", "GENEIUS_CA_COORDS")
+
+
+def gnn_a_dir() -> Path:
+    """Output A checkpoint and predictions.csv. Reading predictions needs no torch import."""
+    raw = os.environ.get("GENEIUS_GNN_A_DIR") or str(data_dir() / "gnn_a")
+    return Path(raw).expanduser()
+
+
 def alphamissense() -> Path:
     return data_dir() / "AlphaMissense_aa_substitutions.tsv.gz"
 

@@ -4,13 +4,14 @@ from pathlib import Path
 
 from geneius.agent.tools import (
     TOOL_FUNCTIONS,
+    expand,
     find_entity,
     find_paths,
     map_symptoms,
     suggest_assay,
     suggest_treatment,
 )
-from geneius.data import get_hpo, get_kg, norm_hpo
+from geneius.data import get_hpo, get_kg, load_variants, norm_hpo
 from geneius.data.clinvar import parse_protein_change, review_stars
 from geneius.graph.leakage import remove_heldout_disease_edges
 from geneius.labels import harmful_label
@@ -65,6 +66,31 @@ def test_find_entity():
     assert find_entity("Seizure")["matches"][0]["node_id"] == "HP:0001250"
 
 
+def test_expand():
+    # Fixture: Dravet syndrome has 4 phenotypes, gene SCN1A, and drug Stiripentol. Seizure is shared
+    # with Angelman syndrome and SCN1A (degree 3), the top phenotype degree, so it is the generic hub.
+    out = expand("Dravet syndrome")
+    assert out["found"] and out["node_type"] == "disease" and out["total"] == 6
+    names = [n["name"] for n in out["neighbors"]]
+    assert names == ["SCN1A", "Febrile seizure", "Hypotonia", "Global developmental delay", "Stiripentol", "Seizure"]
+    assert set(out["neighbors"][0]) == {"node_id", "node_type", "name", "relation", "degree"}
+    assert out["neighbors"][-1] == {"node_id": "HP:0001250", "node_type": "phenotype", "name": "Seizure",
+                                    "relation": "disease_phenotype_positive", "degree": 3}
+
+    phenos = expand("Dravet syndrome", node_type="phenotype", limit=2)
+    assert phenos["total"] == 4
+    assert [n["node_id"] for n in phenos["neighbors"]] == ["HP:0002373", "HP:0001252"]
+
+    assert [n["name"] for n in expand("Dravet syndrome", relation="indication")["neighbors"]] == ["Stiripentol"]
+    assert {n["name"] for n in expand("rho", node_type="disease")["neighbors"]} == {"retinitis pigmentosa"}
+    assert expand("HP:0001250", node_type="disease")["total"] == 2
+    assert expand("not a node") == {"node_id": "not a node", "found": False, "total": 0, "neighbors": []}
+
+    empty = expand("rho", node_type="gene", relation="disease_protein")
+    assert empty["neighbors"] == [] and empty["available_node_types"] == {"disease": 1}
+    assert empty["available_relations"] == ["disease_protein"]
+
+
 def test_treatment_and_assay_rules():
     assert suggest_treatment("loss_of_function")["strategy"] == "gene_augmentation"
     assert suggest_treatment("gain_of_function", gene="SCN5A")["strategy"] == "channel_blocker"
@@ -87,6 +113,10 @@ def test_every_tool_returns_json():
         "suggest_assay": {"gene": "RHO"},
         "evidence_report": {"variant": "RHO p.Pro23His"},
         "show_structure": {"variant": "RHO p.Pro23His"},
+        "patient_rank": {"hpo_ids": ["HP:0000510"], "variants": ["RHO:P23H"]},
+        "population_evidence": {"variant": "RHO:C187S"},
+        "stability": {"variant": "RHO:P23H"},
+        "mouse_evidence": {"gene": "RHO"},
     }
     assert set(args) == set(TOOL_FUNCTIONS)
     for name, kw in args.items():
@@ -99,6 +129,14 @@ def test_clinvar_parsing():
     assert parse_protein_change("NM_000539.3(RHO):c.100C>T (p.Gln34Ter)") is None
     assert review_stars("reviewed by expert panel") == 3
     assert review_stars("no assertion criteria provided") == 0
+
+
+def test_load_variants_hides_test_labels(tmp_path, monkeypatch):
+    csv = tmp_path / "variants.csv"
+    csv.write_text("variant_id,gene,class_2023,class_now,stars_now,split\n1,RHO,VUS,P,2,test\n")
+    monkeypatch.setenv("GENEIUS_VARIANTS_CSV", str(csv))
+    assert list(load_variants().columns) == ["variant_id", "gene", "class_2023", "split"]
+    assert load_variants(with_test_labels=True)["class_now"].tolist() == ["P"]
 
 
 def test_harmful_label():

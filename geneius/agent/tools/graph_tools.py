@@ -1,7 +1,8 @@
 """Graph tools: find_entity, expand, find_paths.
 
 find_entity: works for genes, diseases, and HPO terms. TODO: variants.
-expand: stub. TODO: needs the full graph from graph/build.py.
+expand: works on PrimeKG gene, disease, phenotype, pathway, and drug nodes. TODO: variant
+nodes once graph/build.py adds them.
 find_paths: works for symptom -> gene paths. TODO: variant patterns like
 variant -> protein -> symptom -> disease once variant nodes exist.
 
@@ -12,10 +13,29 @@ find_paths path types (most informative first):
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+from functools import lru_cache
+
+import numpy as np
+import pandas as pd
+
 from ... import config
 from ...models.phenotype_overlap import get_overlap_ranker
-from ...data import HPO_ROOT, PHENO_ROOT, get_hpo, get_kg
+from ...data import HPO_ROOT, PHENO_ROOT, get_hpo, get_kg, norm_hpo, read_primekg
 from . import stubs
+
+# PrimeKG node type -> tool node type
+NODE_TYPES = {"gene/protein": "gene", "disease": "disease", "effect/phenotype": "phenotype",
+              "pathway": "pathway", "drug": "drug"}
+TYPE_ORDER = {"disease": 0, "gene": 1, "phenotype": 2, "pathway": 3, "drug": 4}
+# drug_drug (2.7M rows) and the anatomy / GO / exposure layers are left out to keep memory low.
+EXPAND_RELATIONS = [
+    "disease_phenotype_positive", "disease_phenotype_negative", "disease_protein", "disease_disease",
+    "phenotype_protein", "phenotype_phenotype", "protein_protein", "pathway_protein", "pathway_pathway",
+    "drug_protein", "drug_effect", "indication", "contraindication", "off-label use",
+]
+# Phenotypes above this percentile of phenotype degree (e.g. inheritance modes) count as generic hubs.
+HUB_PERCENTILE = 99
 
 
 def find_paths(hpo_ids: list[str], gene: str, max_paths: int = 5) -> list[dict]:
@@ -97,6 +117,100 @@ def find_entity(query: str) -> dict:
     return {"query": query, "matches": matches}
 
 
-def expand(node_id: str, node_type: str | None = None) -> dict:
-    """Neighbors of a node, optionally filtered by type. Returns {node_id, neighbors: [{node_id, node_type, relation}]}."""
-    return stubs.expand(node_id, node_type)
+@dataclass
+class _Adjacency:
+    edges: pd.DataFrame  # src_type, src, dst_type, dst, relation; both directions
+    rows: dict  # (type, key) -> row positions in edges
+    degree: dict  # (type, key) -> number of distinct neighbors
+    hub_degree: float
+
+
+def _node_keys(ids: pd.Series, names: pd.Series, types: pd.Series) -> pd.Series:
+    """Genes, diseases, pathways, and drugs are keyed by name, phenotypes by HPO id."""
+    hpo = get_hpo()
+    is_pheno = types == "phenotype"
+    lookup = {i: hpo.primary(norm_hpo(i)) for i in pd.unique(ids[is_pheno])}
+    return names.where(~is_pheno, ids.map(lookup))
+
+
+@lru_cache(maxsize=1)
+def _adjacency() -> _Adjacency:
+    df = read_primekg(EXPAND_RELATIONS)
+    df = df[df.x_type.isin(NODE_TYPES.keys()) & df.y_type.isin(NODE_TYPES.keys())]
+    xt, yt = df.x_type.map(NODE_TYPES), df.y_type.map(NODE_TYPES)
+    fwd = pd.DataFrame({
+        "src_type": xt.values, "src": _node_keys(df.x_id, df.x_name, xt).values,
+        "dst_type": yt.values, "dst": _node_keys(df.y_id, df.y_name, yt).values,
+        "relation": df.relation.values,
+    })
+    rev = fwd.rename(columns={"src_type": "dst_type", "src": "dst", "dst_type": "src_type", "dst": "src"})
+    edges = pd.concat([fwd, rev], ignore_index=True).drop_duplicates()
+    edges = edges[~((edges.src_type == edges.dst_type) & (edges.src == edges.dst))].reset_index(drop=True)
+
+    pairs = edges.drop_duplicates(["src_type", "src", "dst_type", "dst"])
+    degree = pairs.groupby(["src_type", "src"]).size().to_dict()
+    pheno_degrees = [d for (t, _), d in degree.items() if t == "phenotype"]
+    hub = float(np.percentile(pheno_degrees, HUB_PERCENTILE)) if pheno_degrees else float("inf")
+    rows = edges.groupby(["src_type", "src"]).indices
+    return _Adjacency(edges, rows, degree, hub)
+
+
+def _resolve(adj: _Adjacency, node_id: str) -> list[tuple[str, str]]:
+    q = node_id.strip()
+    candidates = [q, q.upper()]
+    if q.upper().startswith("HP:"):
+        candidates.append(get_hpo().primary(norm_hpo(q)))
+    found = [(t, k) for t in TYPE_ORDER for k in dict.fromkeys(candidates) if (t, k) in adj.rows]
+    if found:
+        return found
+    ql = q.lower()
+    return [key for key in adj.rows if key[0] in ("disease", "pathway", "drug") and key[1].lower() == ql]
+
+
+def _name(node_type: str, key: str) -> str:
+    return get_hpo().label(key) if node_type == "phenotype" else key
+
+
+def expand(node_id: str, node_type: str | None = None, relation: str | None = None, limit: int = 25) -> dict:
+    """Neighbors of a node, optionally filtered by neighbor type and PrimeKG relation.
+
+    Returns {node_id, node_type, name, found, total, neighbors: [{node_id, node_type, name, relation, degree}]}.
+    At most `limit` neighbors. Generic hub phenotypes come last. Other phenotypes are ordered most
+    specific first (lowest degree), other node types best-connected first.
+    """
+    if config.use_stubs():
+        return stubs.expand(node_id, node_type)
+    adj = _adjacency()
+    matches = _resolve(adj, node_id)
+    if not matches:
+        return {"node_id": node_id, "found": False, "total": 0, "neighbors": []}
+    src_type, src = matches[0]
+    rows = adj.edges.iloc[np.concatenate([adj.rows[m] for m in matches])]
+    if node_type:
+        rows = rows[rows.dst_type == node_type]
+    if relation:
+        rows = rows[rows.relation == relation]
+
+    neighbors = []
+    for t, k, rel in rows[["dst_type", "dst", "relation"]].drop_duplicates().itertuples(index=False):
+        deg = adj.degree.get((t, k), 0)
+        hub = t == "phenotype" and deg >= adj.hub_degree
+        order = deg if t == "phenotype" else -deg
+        name = _name(t, k)
+        neighbors.append(((hub, TYPE_ORDER.get(t, 9), order, name, rel),
+                          {"node_id": k, "node_type": t, "name": name, "relation": rel, "degree": deg}))
+    neighbors.sort(key=lambda x: x[0])
+    out = {
+        "node_id": src,
+        "node_type": src_type,
+        "name": _name(src_type, src),
+        "found": True,
+        "total": len(neighbors),
+        "neighbors": [n for _, n in neighbors[:max(0, int(limit))]],
+    }
+    if not neighbors and (node_type or relation):
+        # Tell the caller what the filters could have matched, so it can retry instead of giving up.
+        everything = adj.edges.iloc[np.concatenate([adj.rows[m] for m in matches])]
+        out["available_node_types"] = everything.drop_duplicates(["dst_type", "dst"]).dst_type.value_counts().to_dict()
+        out["available_relations"] = sorted(everything.relation.unique().tolist())
+    return out

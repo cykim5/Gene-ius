@@ -1,0 +1,7 @@
+variant_id,variation_id,gene,uniprot_id,pos,ref,alt,numbering,genomic_key
+RHO:P23H,13013,RHO,P08100,23,P,H,uniprot_canonical,chr3:129528801:C:A
+RHO:C187S,1502009,RHO,P08100,187,C,S,uniprot_canonical,chr3:129528885:G:T
+USH2A:C759F,2356,USH2A,O75445,759,C,F,uniprot_canonical,chr1:216247118:C:A
+USH2A:C759F,2357,USH2A,O75445,759,C,F,uniprot_canonical,chr1:216247119:A:C
+SCN1A:R101Q,9001,SCN1A,P35498,101,R,Q,uniprot_canonical,chr2:166000001:G:A
+SCN1A:A900V,9002,SCN1A,P35498,900,A,V,unmappable,chr2:166000002:C:T

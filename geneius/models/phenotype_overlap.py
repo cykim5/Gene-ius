@@ -11,15 +11,22 @@ in the agent benchmark.
 from __future__ import annotations
 
 import math
+import os
+import pickle
 from collections import Counter
 from functools import lru_cache
 
+from .. import config
 from ..data import HPO, KG, get_hpo, get_kg
 
 
 class OverlapRanker:
-    def __init__(self, kg: KG, hpo: HPO, hide_diseases: set[str] | frozenset = frozenset()):
+    def __init__(self, kg: KG, hpo: HPO, hide_diseases: set[str] | frozenset = frozenset(),
+                 _precomputed: tuple[dict, dict] | None = None):
         self.kg, self.hpo = kg, hpo
+        if _precomputed is not None:
+            self.disease_exp, self.ic = _precomputed
+            return
         # Each disease's annotations expanded with all their ancestors.
         self.disease_exp: dict[str, frozenset] = {
             d: frozenset().union(*(hpo.ancestors(t) for t in ts))
@@ -30,14 +37,16 @@ class OverlapRanker:
         counts = Counter(t for s in self.disease_exp.values() for t in s)
         self.ic: dict[str, float] = {t: -math.log(c / n) for t, c in counts.items()}
 
-    def score_diseases(self, hpo_ids: list[str]) -> dict[str, float]:
+    def score_diseases(self, hpo_ids: list[str], diseases: set[str] | None = None) -> dict[str, float]:
         terms = [t for t in dict.fromkeys(self.hpo.primary(x) for x in hpo_ids) if t in self.hpo.names]
         if not terms:
             return {}
         # Ancestors sorted most-informative first, so the first hit is the best match.
         anc = [sorted(self.hpo.ancestors(t), key=lambda a: -self.ic.get(a, 0.0)) for t in terms]
+        items = ((d, self.disease_exp[d]) for d in diseases if d in self.disease_exp) if diseases is not None \
+            else self.disease_exp.items()
         scores = {}
-        for d, dexp in self.disease_exp.items():
+        for d, dexp in items:
             s = 0.0
             for alist in anc:
                 for a in alist:
@@ -59,6 +68,24 @@ class OverlapRanker:
         return [{"gene": g, "disease": d, "score": round(s, 4)} for g, (s, d) in ranked]
 
 
+def _cache_path():
+    kg_m = config.primekg_csv().stat().st_mtime_ns
+    hpo_m = config.hpo_obo().stat().st_mtime_ns
+    return config.data_dir() / "cache" / f"overlap_ranker_{kg_m}_{hpo_m}.pkl"
+
+
 @lru_cache(maxsize=1)
 def get_overlap_ranker() -> OverlapRanker:
-    return OverlapRanker(get_kg(), get_hpo())
+    kg, hpo = get_kg(), get_hpo()
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return OverlapRanker(kg, hpo)
+    path = _cache_path()
+    if path.exists():
+        with path.open("rb") as f:
+            disease_exp, ic = pickle.load(f)
+        return OverlapRanker(kg, hpo, _precomputed=(disease_exp, ic))
+    ranker = OverlapRanker(kg, hpo)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as f:
+        pickle.dump((ranker.disease_exp, ranker.ic), f, protocol=pickle.HIGHEST_PROTOCOL)
+    return ranker

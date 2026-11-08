@@ -23,13 +23,37 @@ D. Which treatment strategy fits?
 
 How to work:
 1. Plan the steps.
-2. Call tools. Start with gnn_predict, then structural_neighbors and find_paths for evidence.
+2. Call tools. For one variant, call evidence_report (the current model's harmful score and the evidence)
+   and gnn_predict (our GNN, trained on 2023 data only). Report both scores with their sources. If one is
+   above 0.5 and the other below, say the models disagree and treat it as uncertainty.
 3. Check whether the evidence is strong and consistent.
 4. If it's weak or conflicting, gather more. If it's still unclear, say you're unsure and call suggest_assay.
 5. Answer in plain language. Every claim must cite a path or neighbor a tool returned.
 
-Never invent genes, diseases, variants, or links the tools did not return.
-Treatments are hypotheses. Research use only, not a diagnosis."""
+For a question about a gene's diseases and symptoms: expand the gene with node_type="disease", expand
+each disease with node_type="phenotype", then call find_paths with those HPO ids to confirm the links.
+
+For a patient with symptoms (HPO ids) and candidate variants: call patient_rank. Then explain the top
+variant: find_paths(hpo_ids, its gene) for symptom -> disease -> gene paths, and evidence_report(variant)
+for the evidence, paralog evidence, nearest known variants, mechanism, mouse evidence, computational
+evidence, and suggested assay. Give harmful, phenotype_match, and combined for each candidate exactly as
+patient_rank returned them, and say the harmful score is from the current model.
+
+If evidence_report's assessment says unsure (indeterminate computational evidence, the model is unsure,
+or conflicting evidence such as PP3 with healthy carriers), say you're unsure, give its reasons, and
+call suggest_assay for the gene. Mouse evidence comes from MGI and is gene-level. If population_evidence
+finds nothing, say the variant was not seen in the 1000 Genomes phased panel, not that it is absent.
+
+Never invent genes, diseases, symptoms, variants, or links the tools did not return. Name only diseases
+and symptoms that appear in a tool result. Keep the final answer under 300 words.
+A result with "stub": true is a placeholder, not evidence. Don't cite it; say that tool isn't built yet.
+Mention a treatment only if suggest_treatment returned it, and call it a hypothesis.
+Research use only, not a diagnosis."""
+
+DEFAULT_BASE_URL = "https://api.tokenfactory.us-north1.nebius.com/v1/"
+DEFAULT_MODEL = "nvidia/Nemotron-3.5-Super-VL"
+# Reasoning models spend part of the budget thinking before they answer or call a tool.
+MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "4096"))
 
 S = {"type": "string"}
 LIST_S = {"type": "array", "items": S}
@@ -49,8 +73,17 @@ def _spec(name: str, description: str, props: dict, required: list[str]) -> dict
 TOOL_SPECS = [
     _spec("map_symptoms", "Map free-text symptoms to HPO terms.", {"text": S}, ["text"]),
     _spec("find_entity", "Look up a gene, variant, disease, or symptom.", {"query": S}, ["query"]),
-    _spec("expand", "Neighbors of a node, optionally filtered by node type.",
-          {"node_id": S, "node_type": S}, ["node_id"]),
+    _spec("expand",
+          "Neighbors of a gene, disease, HPO term, pathway, or drug, with each neighbor's degree. "
+          "Generic high-degree phenotypes come last. Example: expand('RHO', node_type='disease') "
+          "returns RHO's diseases; expand('retinitis pigmentosa', node_type='phenotype') returns its symptoms.",
+          {"node_id": S,
+           "node_type": {"type": "string", "enum": ["gene", "disease", "phenotype", "pathway", "drug"],
+                         "description": "type of the NEIGHBORS to return, not of node_id"},
+           "relation": {"type": "string", "description": "PrimeKG relation, e.g. disease_protein, "
+                        "disease_phenotype_positive, phenotype_protein, protein_protein, indication"},
+           "limit": {"type": "integer", "description": "max neighbors, default 25"}},
+          ["node_id"]),
     _spec("find_paths", "Knowledge graph paths linking HPO terms to a gene.",
           {"hpo_ids": LIST_S, "gene": S, "max_paths": {"type": "integer"}}, ["hpo_ids", "gene"]),
     _spec("structural_neighbors", "Known variants nearby in 3D and at matching residues in related proteins.",
@@ -64,8 +97,26 @@ TOOL_SPECS = [
     _spec("suggest_treatment", "Treatment strategy hypothesis from mechanism, gene, and disease.",
           {"mechanism": S, "gene": S, "disease": S}, ["mechanism"]),
     _spec("suggest_assay", "Experiment that would settle an uncertain case.", {"gene": S}, ["gene"]),
-    _spec("evidence_report", "One-page clinician-style evidence report.", {"variant": S}, ["variant"]),
+    _spec("evidence_report",
+          "Evidence for one variant ('GENE:RefPosAlt'): harmful score, confidence, computational evidence (PP3/BP4), "
+          "evidence line, paralog evidence, nearest known variants, FoldX mechanism, MGI mouse evidence, suggested assay.",
+          {"variant": S, "time_machine": {"type": "boolean", "description": "only the 2023 model and 2023 evidence"}},
+          ["variant"]),
     _spec("show_structure", "Send the variant and its neighbors to the 3D viewer.", {"variant": S}, ["variant"]),
+    _spec("patient_rank",
+          "Rank a patient's candidate variants: harmful score, fit between the patient's HPO terms and the "
+          "variant gene's diseases (best candidate = 1), and combined = sqrt(harmful x phenotype_match).",
+          {"hpo_ids": LIST_S, "variants": {**LIST_S, "description": "'GENE:RefPosAlt', e.g. RPE65:H68P"},
+           "time_machine": {"type": "boolean", "description": "use only the 2023 model"}},
+          ["hpo_ids", "variants"]),
+    _spec("population_evidence",
+          "1000 Genomes carriers for a variant: carriers, homozygotes, counts by superpopulation, whether it is "
+          "seen in apparently healthy people, and healthy recessive two-hit carriers.",
+          {"variant": S}, ["variant"]),
+    _spec("stability", "FoldX protein stability (ddG, kcal/mol) and mechanism label. RHO and RPE65 only.",
+          {"variant": S}, ["variant"]),
+    _spec("mouse_evidence", "MGI mouse phenotypes for a gene (gene-level, not variant-specific).",
+          {"gene": S}, ["gene"]),
 ]
 
 
@@ -74,18 +125,16 @@ def _client():
 
     return OpenAI(
         api_key=os.environ["NEBIUS_API_KEY"],
-        base_url=os.environ.get("NEBIUS_BASE_URL", "https://api.studio.nebius.com/v1/"),
+        base_url=os.environ.get("NEBIUS_BASE_URL") or DEFAULT_BASE_URL,
     )
 
 
 def _complete(client, messages):
-    models = [m for m in (os.environ.get("LLM_MODEL"), os.environ.get("LLM_FALLBACK_MODEL")) if m]
-    if not models:
-        raise RuntimeError("Set LLM_MODEL in .env")
+    models = [m for m in (os.environ.get("LLM_MODEL") or DEFAULT_MODEL, os.environ.get("LLM_FALLBACK_MODEL")) if m]
     for i, model in enumerate(models):
         try:
             return client.chat.completions.create(
-                model=model, messages=messages, tools=TOOL_SPECS, temperature=0.2
+                model=model, messages=messages, tools=TOOL_SPECS, temperature=0.2, max_tokens=MAX_TOKENS
             )
         except Exception:
             if i == len(models) - 1:

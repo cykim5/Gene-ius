@@ -4,18 +4,18 @@ Nucleate Pittsburgh BioHack 2026, BioTech track, NVIDIA problem statement 2: "Ho
 
 When a patient gets genetic testing, labs often find a variant they can't classify as harmful or harmless. These are variants of uncertain significance (VUS). In many genes, different mutations cause different diseases, so a yes/no harmful score isn't enough. What matters is how the mutation breaks the protein, because that decides which disease follows and which treatment could work.
 
-For each variant, a GNN over a phenotype-genotype knowledge graph predicts four linked things:
+For each variant the plan is four linked outputs. **Output A is trained and scored. Outputs B, C, and D are specified and unimplemented.**
 
-| | Question |
-|---|---|
-| A | Is it harmful or benign? |
-| B | How does it break the protein? (gain, loss, dominant-negative, misfolding) |
-| C | Which disease and symptoms follow? Eye-only or syndromic? |
-| D | Which treatment strategy fits? (augmentation, silencing, chaperone) |
+| | Question | Status |
+|---|---|---|
+| A | Is it harmful or benign? | Trained and scored. See `eval/RESULTS.md`. |
+| B | How does it break the protein? (gain, loss, dominant-negative, misfolding) | Unimplemented. Demo mechanism text comes from FoldX on the evidence report, for the variants that have it. |
+| C | Which disease and symptoms follow? Eye-only or syndromic? | Unimplemented as a GNN head. The agent reads disease groups from the evidence report and symptom paths from PrimeKG. |
+| D | Which treatment strategy fits? (augmentation, silencing, chaperone) | Unimplemented. `suggest_treatment` is a gene/mechanism rule table. |
 
-An LLM agent uses the GNN to search the graph, explains every prediction with real evidence, says when it's unsure, and suggests the experiment that would settle it.
+An LLM agent (Nemotron via Nebius) calls graph and evidence tools, explains with the paths those tools return, says when it's unsure, and can suggest an assay. Symptom-to-gene ranking for a patient is `patient_rank`: the current-model harmful score times a phenotype-overlap score against that gene's PrimeKG diseases.
 
-We test it by training only on 2023 data and scoring it on VUS that experts reclassified afterward.
+We test output A by training only on 2023 labels and scoring VUS that experts reclassified afterward.
 
 ## Quick start
 
@@ -48,7 +48,7 @@ Folders follow the stages in the plan.
 | `geneius/graph/` | 0, 4 | graph build, 3D and related-protein edges, leakage rules |
 | `geneius/labels/` | 5 | label definitions and cleaning |
 | `geneius/models/` | 6 | GNN, baselines, calibration |
-| `geneius/agent/` | 7 | agent loop and its 12 tools |
+| `geneius/agent/` | 7 | agent loop and its 16 tools |
 | `eval/` | 8, 9 | go/no-go, reclassification test, time-saved curve, today's ranked list |
 | `app/` | 10 | web app and 3D viewer |
 | `docs/` | 11 | pitch, judge questions |
@@ -59,20 +59,49 @@ Folders follow the stages in the plan.
 
 | Piece | Status |
 |---|---|
-| PrimeKG and HPO loaders | works |
-| ClinVar protein change and review star parsing | works |
-| Leakage removal for held-out diseases | works |
-| `map_symptoms`, `find_entity`, `find_paths` | works |
-| `suggest_treatment`, `suggest_assay` | works (rule tables from the plan) |
-| Phenotype overlap baseline | works |
-| Time-saved curve math | works |
-| Agent loop | written, not run yet (needs API key) |
-| Go/no-go count | to do, do this first |
-| Features, graph build, GNN, baselines, calibration | to do |
-| `expand`, `structural_neighbors`, `gnn_predict`, `gnn_score`, `evidence_by_source`, `evidence_report`, `show_structure` | stubs |
-| Web app | to do |
+| PrimeKG and HPO 2023 loaders | works |
+| Variant table, 2023 vs current ClinVar, leakage splits | works (`data/processed/variants.csv`, 15,905 missense rows) |
+| Graph build, output A GNN, XGBoost and AlphaMissense baselines | trained; numbers in `eval/RESULTS.md` |
+| `gnn_predict` | output A only, from `data/gnn_a/predictions.csv` |
+| `map_symptoms` | dictionary matcher on HPO names and synonyms. Embedding matcher is not built. Negation is ignored. |
+| `find_entity`, `expand`, `find_paths` | works on PrimeKG |
+| `evidence_report`, `patient_rank` | works from `predictions.json` and phenotype overlap |
+| `population_evidence` | 1000 Genomes phased panel. A miss means "not seen in that panel." |
+| `stability` | FoldX for RHO and RPE65 demo variants |
+| `mouse_evidence` | MGI, gene-level |
+| `show_structure` | the 7 demo variants |
+| `suggest_treatment`, `suggest_assay` | rule tables |
+| Agent loop | works with `NEBIUS_API_KEY` (`python -m geneius ask ...`) |
+| `gnn_score`, `structural_neighbors`, `evidence_by_source` | stubs (`"stub": true`) |
+| Web app | static site on branch `claire/app`, live at https://gene-ius-app.vercel.app. Not merged here. |
+
+## Numbers to cite
+
+Use these. They are the variant-table splits and `eval/RESULTS.md` after the canonical-position rerun.
+
+| Quantity | Number |
+|---|---|
+| Headline test: 2023 VUS later P/B at 2+ stars | **144** (124 pathogenic, 20 benign) |
+| Secondary test: same, at exactly 1 star | **181** (147 pathogenic, 34 benign) |
+| 1-star or higher, both tests | **325** |
+| 2023 labeled training variants (P or B) | **2,790** |
+| Unlabeled rows (still no P/B train or test label) | **10,685** |
+| Headline AUROC | team 2023 model **0.981**, XGBoost **0.953**, GNN **0.931**, GNN without AlphaMissense **0.800**, AlphaMissense imputed **0.742** |
+
+The GNN matches the tabular baseline and does not beat it. 3D edges do not win on the headline set or the held-out genes. Full table, confidence intervals, and the CACNA1C placement check are in `eval/RESULTS.md`.
+
+## Demo
+
+Patient with nystagmus, visual impairment, and an abnormal electroretinogram (`HP:0000639`, `HP:0000505`, `HP:0000512`) and candidates `RPE65:H68P`, `ABCA4:R2040P`, `MYH7:R403P`, `KCNQ1:R591P`. `patient_rank` orders them RPE65, ABCA4, MYH7, KCNQ1. Single-variant agent demo: `RHO:C187S` (current-model harmful 1.0 and GNN output A 1.0).
+
+```bash
+python -m geneius ask "Interpret RHO:C187S. Report the current-model harmful score and the GNN score."
+python -m geneius symptoms "nystagmus and visual impairment"
+```
 
 ## Build order
+
+Original plan. Current status is the table above.
 
 1. ClinVar 2023 vs current comparison and VUS counts (go/no-go)
 2. UniProt mapping, residue check, AlphaMissense, UniProt region features
