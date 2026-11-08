@@ -5,8 +5,7 @@ Placeholder columns stay NaN until their data lands (AlphaMissense, AlphaFold pL
 regions). model_columns() picks only columns that have values, so filling a placeholder makes the
 models use it with no other change.
 
-Relative position needs protein length, which isn't available yet (data/uniprot.py), so it's
-not computed.
+Relative position needs protein length, so it's not computed here.
 """
 from __future__ import annotations
 

@@ -1,13 +1,9 @@
-"""Stage 3: variant features. What each mutation does to the protein.
+"""Variant features.
 
-| Feature                    | Source             | File            |
-| damage score               | AlphaMissense      | alphamissense.py |
-| effect score, embedding    | ESM-2              | esm2.py          |
-| pLDDT, burial, distances   | AlphaFold          | alphafold.py     |
-| protein region flags       | UniProt features   | regions.py       |
-| position, change type      | sequence           | regions.py       |
-| population frequency       | gnomAD v2.1.1, v3.1.2 | gnomad.py     |
+variant_features.py   amino-acid change features (size, charge, hydrophobicity)
+graph_features.py     related-gene (paralog) and 3D neighbor links, and the matching XGBoost features
+gnomad.py             gnomAD v2.1.1 and v3.1.2 population frequencies and gene constraint
 
-Every function takes variant rows (gene, uniprot_id, pos, ref, alt) and returns
-one column per feature, so the feature table can be built by joining them.
+AlphaMissense, AlphaFold, UniProt region, FoldX, and the other evidence layers for the main model
+are built in notebooks/omar_clinvar_vus.ipynb.
 """

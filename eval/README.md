@@ -1,27 +1,12 @@
-# Evaluation (Stages 8 and 9)
+# Evaluation
 
-| File | Test |
+| File | What it does |
 |---|---|
-| `go_no_go.py` | Stage 2 check: enough reclassified VUS? Run first. |
-| `time_saved.py` | Time-saved curve (test 3) |
-| `reclassification.py` | Headline test: A, B, C on 2023 VUS reclassified since (to do) |
-| `rank_today.py` | Stage 9: retrain on all data, rank today's VUS (to do) |
+| `RESULTS.md` | GNN results: headline test, 1-star test, ablations, held-out genes, CACNA1C check |
+| `reclassification.py` | Output A on 2023 VUS that experts reclassified later, GNN vs XGBoost vs AlphaMissense |
+| `ablation.py` | One layer at a time (paralog and 3D edges) and the held-out-gene test |
+| `time_saved.py` | How many real disease variants land in the top k when a lab tests in ranked order |
 
-Full test list (from the plan):
+The main model's time-machine test, REVEL and CADD benchmarks, disease prediction, and ACMG calibration are in `notebooks/omar_clinvar_vus.ipynb`.
 
-1. VUS reclassification (headline)
-2. Same test without AlphaMissense
-3. Time-saved curve
-4. HPO time-based test
-5. Symptom scoring with partial credit
-6. Telling sibling diseases apart
-7. Mechanism vs LoGoFunc
-8. Treatment vs the migalastat list
-9. Held-out genes
-10. Results by data amount
-11. Remove one layer at a time
-12. Confidence check
-13. Agent benchmark
-14. Cardiac panel
-
-Rules: report n for every number, add bootstrap confidence intervals, and keep weak results next to the baselines.
+Every number comes with its n and a bootstrap confidence interval, and weak results stay next to the baselines.

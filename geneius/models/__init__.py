@@ -1,1 +1,1 @@
-"""Stage 6: the GNN, baselines, and calibration."""
+"""The output A GNN and the phenotype overlap ranker."""

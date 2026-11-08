@@ -1,9 +1,7 @@
-"""ClinVar loading and the 2023 vs current comparison (Stage 2).
+"""ClinVar helpers: protein change parsing and review stars.
 
-Done: parsing protein changes and review stars.
-TODO: load_missense(), compare_releases(), and the go/no-go count in eval/go_no_go.py.
-Check the column headers in each release first. ClinVar has renamed some
-classification columns over time.
+The full 2023 vs current comparison that built data/processed/variants.csv is in
+notebooks/omar_clinvar_vus.ipynb.
 """
 from __future__ import annotations
 
@@ -43,14 +41,3 @@ def parse_protein_change(name: str) -> tuple[str, int, str] | None:
 
 def review_stars(status: str) -> int:
     return STARS.get((status or "").strip().lower(), 0)
-
-
-def load_missense(path) -> "pd.DataFrame":  # noqa: F821
-    """TODO: GRCh38 only, missense only, 1+ star. Columns: variant_id, gene, ref, pos, alt,
-    classification, stars, diseases (MONDO), hpo_ids."""
-    raise NotImplementedError
-
-
-def compare_releases(old, new) -> "pd.DataFrame":  # noqa: F821
-    """TODO: per variant, 2023 class vs current class and stars. Flag VUS reclassified since."""
-    raise NotImplementedError

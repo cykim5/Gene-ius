@@ -21,6 +21,3 @@ def random_expected(is_pathogenic: list[int], ks=KS) -> dict[int, float]:
     rate = sum(is_pathogenic) / len(is_pathogenic) if is_pathogenic else 0.0
     return {k: rate * min(k, len(is_pathogenic)) for k in ks}
 
-
-# TODO: plot all four curves (x = variants tested, y = disease variants found)
-# with bootstrap confidence intervals.

@@ -14,8 +14,8 @@ Done (minimal version for Output A):
 Leakage: only the columns in USED_COLUMNS are read. `split` picks which rows get labels and
 disease edges and is never stored on the graph. *_now columns are never read.
 
-To do: mouse phenotypes (MGI), 3D and related-protein edges (structural_edges.py), mechanism and
-treatment nodes, pathway and drug nodes, graph features for XGBoost.
+3D and related-protein links are in features/graph_features.py. Not built: mouse phenotype,
+mechanism, treatment, pathway, and drug nodes.
 """
 from __future__ import annotations
 

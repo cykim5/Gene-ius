@@ -45,7 +45,7 @@ We report what didn't work too: 3D structure and UniProt regions didn't improve 
 | `notebooks/omar_clinvar_vus.ipynb` | The main pipeline: ClinVar 2023 vs today, features, the transparent model, the time-machine test, disease prediction, related genes, FoldX, ACMG calibration, REVEL/CADD benchmarks, 1000 Genomes |
 | `geneius/agent/` | The agent loop and its tools |
 | `geneius/graph/`, `geneius/models/` | Variant graph, GNN, and baselines |
-| `geneius/data/`, `geneius/features/` | Loaders for PrimeKG, HPO, ClinVar, UniProt, AlphaMissense, gnomAD |
+| `geneius/data/`, `geneius/features/` | PrimeKG, HPO, and ClinVar loaders, gene panels, variant features, gnomAD frequencies |
 | `eval/` | GNN evaluation, ablations, held-out genes (`eval/RESULTS.md`) |
 | `app/` | The website: variant lookup, A to D, 3D structure, ranked list, agent |
 | `data/processed/` | The variant table (15,905 missense variants, 2023 and current labels) |
