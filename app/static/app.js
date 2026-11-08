@@ -176,6 +176,8 @@ function show(recs, pick) {
   setText("d-strategy", r.treatment, "No strategy in our data for this gene yet");
   setText("d-assay", r.suggested_assay);
 
+  $("answer").replaceChildren();
+  $("answer").className = "answer";
   renderRanked(r.gene, r);
   renderStructure(r, info).catch(() => setText("viewer-note", "Couldn't load the AlphaFold structure."));
 }
@@ -269,6 +271,35 @@ async function renderStructure(r, info) {
     (match ? "" : ` Note: the model has ${site.resn} here, not ${AA1TO3[r.ref]}, so numbering may differ.`));
 }
 
+// ---------- Agent ----------
+
+async function ask(event) {
+  event.preventDefault();
+  const r = state.current;
+  if (!r) return;
+  const btn = $("ask").querySelector("button");
+  const out = $("answer");
+  btn.disabled = true;
+  out.className = "answer muted";
+  out.textContent = "Thinking... (about 10 seconds)";
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gene: r.gene, variation_id: r.variation_id, question: $("question").value }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (state.current !== r) return;
+    out.className = res.ok ? "answer" : "answer err";
+    out.textContent = res.ok ? body.answer : body.error || "The agent didn't answer.";
+  } catch {
+    out.className = "answer err";
+    out.textContent = "Couldn't reach the agent.";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ---------- Start ----------
 
 async function start() {
@@ -288,6 +319,10 @@ async function start() {
   }
 
   $("search").addEventListener("submit", (e) => { e.preventDefault(); lookup($("q").value); });
+  $("ask").addEventListener("submit", ask);
+  $("question").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); }
+  });
 
   const fromHash = () => {
     const hash = decodeURIComponent(location.hash.slice(1));

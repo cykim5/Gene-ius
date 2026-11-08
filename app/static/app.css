@@ -117,6 +117,15 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .sw.lo { background: #ff7d45; }
 
 
+.ask { display: flex; gap: 8px; align-items: stretch; }
+.ask textarea {
+  flex: 1; min-width: 0; resize: vertical; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+  font: inherit; color: var(--ink); background: #fff;
+}
+.answer { margin-top: 12px; white-space: pre-wrap; }
+.answer:empty { display: none; }
+.answer.err { color: #8a5a10; }
+
 .ranked { margin-top: 16px; }
 .ranked table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ranked th, .ranked td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }

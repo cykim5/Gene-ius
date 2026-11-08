@@ -15,11 +15,11 @@
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/app.css?v=4">
+  <link rel="stylesheet" href="/static/app.css?v=5">
   <script src="https://cdn.jsdelivr.net/npm/3dmol@2.4.2/build/3Dmol-min.js"
           integrity="sha384-zxWwO8usW1MzUHquSL3foT+Cw2ndelPQ5bNzHVYdKGiJ0vqvqQ8Y9XeKLmotffmQ"
           crossorigin="anonymous" defer></script>
-  <script src="/static/app.js?v=4" defer></script>
+  <script src="/static/app.js?v=5" defer></script>
 </head>
 <body>
   <header class="top">
@@ -136,6 +136,17 @@
               <li><i class="sw hi"></i>Very confident</li>
               <li><i class="sw lo"></i>Low confidence</li>
             </ul>
+          </article>
+
+          <article class="card">
+            <h3>Ask the agent</h3>
+            <form id="ask" class="ask">
+              <label for="question" class="sr">Question</label>
+              <textarea id="question" maxlength="300" rows="2" placeholder="Why is this one harmful? What should the lab test?"></textarea>
+              <button type="submit">Ask</button>
+            </form>
+            <div id="answer" class="answer" aria-live="polite"></div>
+            <p class="muted small">Answers come from NVIDIA Nemotron and use only the evidence shown on this page.</p>
           </article>
         </div>
       </div>
