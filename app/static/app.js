@@ -214,25 +214,23 @@ function plddtColor(b) {
   return "#FF7D45";
 }
 
-async function loadStructure(uniprot) {
-  if (!state.structures[uniprot]) {
-    state.structures[uniprot] = (async () => {
-      const models = await getJSON(`https://alphafold.ebi.ac.uk/api/prediction/${uniprot}`);
-      const canonical = models.find((m) => m.modelEntityId === `AF-${uniprot}-F1`);
-      if (!canonical) return null;
-      const r = await fetch(canonical.pdbUrl);
+// AlphaFold models are stored with the site (see build_data.py), so the page never calls another server.
+async function loadStructure(info) {
+  if (!info.structure) return null;
+  if (!state.structures[info.uniprot]) {
+    state.structures[info.uniprot] = fetch(info.structure).then((r) => {
       if (!r.ok) throw new Error("pdb");
       return r.text();
-    })();
+    });
   }
-  return state.structures[uniprot];
+  return state.structures[info.uniprot];
 }
 
 async function renderStructure(r, info) {
   const box = $("viewer");
   setText("viewer-note", "Loading AlphaFold structure...");
   if (!window.$3Dmol) return setText("viewer-note", "The 3D viewer didn't load.");
-  const pdb = await loadStructure(info.uniprot);
+  const pdb = await loadStructure(info);
   if (state.current !== r) return;
   box.hidden = !pdb;
   document.querySelector(".legend").hidden = !pdb;

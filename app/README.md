@@ -39,6 +39,6 @@ Open http://localhost:8000.
 ## Security
 
 - Static site with no server code, no API keys, no logins, and nothing stored.
-- Strict security headers (CSP, no framing, HTTPS only). The only outside sources are the 3Dmol library and AlphaFold.
+- Strict security headers (CSP, no framing, HTTPS only). The only outside source is the 3Dmol viewer library. AlphaFold structures are stored with the site.
 - Public data only. No patient data.
 - The agent from geneius/agent runs separately and isn't part of the public site.

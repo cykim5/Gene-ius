@@ -6,7 +6,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://alphafold.ebi.ac.uk; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
         {
           "key": "X-Content-Type-Options",
@@ -33,6 +33,53 @@
           "value": "same-origin"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/signin",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/sign-in",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/signup",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/sign-up",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/register",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/forgot-password",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/reset-password",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/password-reset",
+      "destination": "/login",
+      "permanent": false
+    },
+    {
+      "source": "/account",
+      "destination": "/login",
+      "permanent": false
     }
   ]
 }

@@ -2,7 +2,8 @@
 
     python app/build_data.py path/to/predictions.json
 
-Writes app/data/index.json (genes, demo variants) and app/data/genes/{GENE}.json.
+Writes app/data/index.json (genes, demo variants), app/data/genes/{GENE}.json, and the
+AlphaFold structures in app/data/structures/ (downloaded once, then reused).
 The app only shows what's in predictions.json. Re-run this whenever predictions.json changes.
 """
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
@@ -61,6 +63,31 @@ def strategy(gene: str, mechanism: str) -> dict | None:
     return {"strategy": rules[m][0], "why": rules[m][1]}
 
 
+def fetch_structure(uniprot: str) -> Path | None:
+    """AlphaFold model for the canonical sequence, saved once to data/structures/.
+
+    Served from our own site, so visitors' browsers never call another server for it.
+    Returns None when AlphaFold only has fragments or isoforms (USH2A).
+    """
+    path = OUT / "structures" / f"{uniprot}.pdb"
+    if path.exists():
+        return path
+    headers = {"User-Agent": "gene-ius build script"}
+
+    def get(url: str) -> bytes:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=120) as r:
+            return r.read()
+
+    models = json.loads(get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot}"))
+    model = next((m for m in models if m["modelEntityId"] == f"AF-{uniprot}-F1"), None)
+    if model is None:
+        return None
+    lines = [ln for ln in get(model["pdbUrl"]).decode().splitlines() if ln.startswith(("ATOM", "TER"))]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines + ["END"]) + "\n")
+    return path
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("predictions")
@@ -99,9 +126,11 @@ def main(argv=None) -> None:
     if unsure:
         demos.append({"variant": unsure[0], "label": "Unsure case"})
 
+    structures = {g: fetch_structure(UNIPROT[g][0]) for g in sorted(by_gene)}
     index = {
         "genes": {g: {"uniprot": UNIPROT[g][0], "length": UNIPROT[g][1], "variants": len(by_gene[g]),
                       "mouse": mouse.get(g, ""),
+                      "structure": f"/data/structures/{structures[g].name}" if structures[g] else None,
                       "panel": "retina" if g in RETINA else "cardiac" if g in CHANNELS or g in
                       {"MYH7", "MYBPC3", "LMNA", "PKP2"} else "other"}
                   for g in sorted(by_gene)},
