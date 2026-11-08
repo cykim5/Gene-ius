@@ -76,7 +76,8 @@ function clinvarTag(code) {
 }
 
 async function getJSON(url) {
-  const r = await fetch(url);
+  // no-cache: always check for a newer file, so an update never shows stale data
+  const r = await fetch(url, url.startsWith("/") ? { cache: "no-cache" } : {});
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
   return r.json();
 }
