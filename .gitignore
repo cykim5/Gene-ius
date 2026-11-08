@@ -11,6 +11,7 @@
 !/data/processed/variants.csv
 !/data/processed/uniprot_mapping.csv
 !/data/processed/uniprot_features.csv
+!/data/processed/gnomad_*.csv
 *.csv.part
 
 # Eval outputs (regenerable)
