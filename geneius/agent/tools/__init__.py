@@ -6,7 +6,7 @@
 | expand               | works on PrimeKG (no variants)  |
 | find_paths           | works for symptom -> gene paths |
 | structural_neighbors | stub                            |
-| gnn_predict          | stub                            |
+| gnn_predict          | works (output A only; B–D are None) |
 | gnn_score            | stub                            |
 | evidence_by_source   | stub                            |
 | suggest_treatment    | works (rule table)              |
